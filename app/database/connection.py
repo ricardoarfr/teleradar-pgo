@@ -19,8 +19,15 @@ from app.config.settings import settings
 # Custo estimado: $6/mês
 # Métrica de alerta: Alertar ao atingir DB_STORAGE_ALERT_MB (padrão: 800 MB)
 
+def _get_db_url() -> str:
+    url = settings.DATABASE_URL
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
+
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    _get_db_url(),
     pool_size=5,        # Conservativo para Free Tier (max 100 conexões)
     max_overflow=10,
     pool_timeout=30,
