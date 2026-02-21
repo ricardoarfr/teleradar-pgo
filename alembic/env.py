@@ -20,6 +20,7 @@ from app.rbac.models import Permission, RolePermission  # noqa: F401
 from app.modules.contracts.models import Contract, ContractStatus  # noqa: F401
 from app.modules.projects.models import Project, ProjectStatus  # noqa: F401
 from app.modules.materials.models import Material  # noqa: F401
+from app.modules.payments.models import Payment, PaymentStatus  # noqa: F401
 
 target_metadata = Base.metadata
 
