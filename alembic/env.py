@@ -17,6 +17,7 @@ from app.database.base import Base
 from app.tenants.models import Tenant, TenantStatus  # noqa: F401
 from app.auth.models import User, Token, AuditLog, UserRole, UserStatus, TokenType  # noqa: F401
 from app.rbac.models import Permission, RolePermission  # noqa: F401
+from app.modules.contracts.models import Contract, ContractStatus  # noqa: F401
 
 target_metadata = Base.metadata
 
