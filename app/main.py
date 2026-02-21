@@ -29,8 +29,8 @@ app = FastAPI(
     description="Sistema de gestão para ISPs — Multi-tenant, RBAC, seguro e escalável",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
-    redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 app.add_middleware(
