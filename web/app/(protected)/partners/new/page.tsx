@@ -62,18 +62,20 @@ export default function NewPartnerPage() {
         </Link>
       </div>
 
-      {/* Seletor de tenant para usuários MASTER sem tenant próprio */}
-      {isMasterWithoutTenant && (
-        <Card className="mb-4">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Selecionar tenant</CardTitle>
-            <CardDescription>
-              Como MASTER, escolha o tenant onde o parceiro será criado.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Novo parceiro</CardTitle>
+          <CardDescription>
+            Cadastre um novo parceiro. Ele será ativado imediatamente e poderá acessar o portal do parceiro.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {isMasterWithoutTenant && (
+            <div className="space-y-2 pb-6 border-b">
               <Label htmlFor="tenant-select">Tenant *</Label>
+              <p className="text-xs text-muted-foreground">
+                Como MASTER, escolha o tenant onde o parceiro será criado.
+              </p>
               <select
                 id="tenant-select"
                 value={selectedTenantId}
@@ -88,18 +90,8 @@ export default function NewPartnerPage() {
                 ))}
               </select>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Novo parceiro</CardTitle>
-          <CardDescription>
-            Cadastre um novo parceiro. Ele será ativado imediatamente e poderá acessar o portal do parceiro.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
           {isMasterWithoutTenant && !selectedTenantId ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
               Selecione um tenant acima para continuar.
