@@ -5,7 +5,6 @@ Revises:
 Create Date: 2026-02-21
 """
 from typing import Sequence, Union
-
 from alembic import op
 
 revision: str = "001"
@@ -15,18 +14,49 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Enums — IF NOT EXISTS garante idempotência independente do driver
-op.execute("""
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tenantstatus') THEN
-        CREATE TYPE tenantstatus AS ENUM ('ACTIVE', 'INACTIVE');
-    END IF;
-END
-$$;
-""")    op.execute("CREATE TYPE IF NOT EXISTS userrole AS ENUM ('MASTER', 'ADMIN', 'MANAGER', 'STAFF', 'CLIENT')")
-    op.execute("CREATE TYPE IF NOT EXISTS userstatus AS ENUM ('PENDING', 'APPROVED', 'BLOCKED')")
-    op.execute("CREATE TYPE IF NOT EXISTS tokentype AS ENUM ('RESET_PASSWORD', 'APPROVAL_CODE', 'REFRESH')")
+    # =========================
+    # ENUMS seguros
+    # =========================
+
+    op.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tenantstatus') THEN
+            CREATE TYPE tenantstatus AS ENUM ('ACTIVE', 'INACTIVE');
+        END IF;
+    END$$;
+    """)
+
+    op.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'userrole') THEN
+            CREATE TYPE userrole AS ENUM ('MASTER', 'ADMIN', 'MANAGER', 'STAFF', 'CLIENT');
+        END IF;
+    END$$;
+    """)
+
+    op.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'userstatus') THEN
+            CREATE TYPE userstatus AS ENUM ('PENDING', 'APPROVED', 'BLOCKED');
+        END IF;
+    END$$;
+    """)
+
+    op.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tokentype') THEN
+            CREATE TYPE tokentype AS ENUM ('RESET_PASSWORD', 'APPROVAL_CODE', 'REFRESH');
+        END IF;
+    END$$;
+    """)
+
+    # =========================
+    # TABELAS
+    # =========================
 
     op.execute("""
         CREATE TABLE IF NOT EXISTS tenants (
@@ -55,6 +85,7 @@ $$;
             updated_at TIMESTAMP NOT NULL
         )
     """)
+
     op.execute("CREATE INDEX IF NOT EXISTS ix_users_email ON users (email)")
 
     op.execute("""
@@ -68,6 +99,7 @@ $$;
             created_at TIMESTAMP NOT NULL
         )
     """)
+
     op.execute("CREATE INDEX IF NOT EXISTS ix_tokens_token ON tokens (token)")
 
     op.execute("""
@@ -81,6 +113,7 @@ $$;
             created_at TIMESTAMP NOT NULL
         )
     """)
+
     op.execute("CREATE INDEX IF NOT EXISTS ix_audit_logs_action ON audit_logs (action)")
 
     op.execute("""
@@ -92,6 +125,7 @@ $$;
             created_at TIMESTAMP NOT NULL
         )
     """)
+
     op.execute("CREATE INDEX IF NOT EXISTS ix_permissions_name ON permissions (name)")
 
     op.execute("""
@@ -110,6 +144,7 @@ def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS tokens")
     op.execute("DROP TABLE IF EXISTS users")
     op.execute("DROP TABLE IF EXISTS tenants")
+
     op.execute("DROP TYPE IF EXISTS tokentype")
     op.execute("DROP TYPE IF EXISTS userstatus")
     op.execute("DROP TYPE IF EXISTS userrole")
