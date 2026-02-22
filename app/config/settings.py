@@ -17,11 +17,9 @@ class Settings(BaseSettings):
     # Ambiente
     ENVIRONMENT: str = "development"
 
-    # Email SMTP
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
+    # Email (Resend)
+    RESEND_API_KEY: str = ""
+    EMAIL_FROM: str = "Teleradar PGO <noreply@teleradar-pgo.com.br>"
     ADMIN_MASTER_EMAIL: str = ""
 
     # Google OAuth2

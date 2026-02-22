@@ -1,8 +1,5 @@
 import logging
-
-import aiosmtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 
 from app.config.settings import settings
 
@@ -10,25 +7,19 @@ logger = logging.getLogger(__name__)
 
 
 async def send_email(to: str, subject: str, body: str) -> bool:
-    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-        logger.warning("SMTP não configurado — e-mail ignorado: %s", subject)
+    if not settings.RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY não configurado — e-mail ignorado: %s", subject)
         return False
 
-    message = MIMEMultipart("alternative")
-    message["Subject"] = subject
-    message["From"] = settings.SMTP_USER
-    message["To"] = to
-    message.attach(MIMEText(body, "html"))
+    resend.api_key = settings.RESEND_API_KEY
 
     try:
-        await aiosmtplib.send(
-            message,
-            hostname=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USER,
-            password=settings.SMTP_PASSWORD,
-            start_tls=True,
-        )
+        resend.Emails.send({
+            "from": settings.EMAIL_FROM,
+            "to": [to],
+            "subject": subject,
+            "html": body,
+        })
         return True
     except Exception as exc:
         logger.error("Falha ao enviar e-mail para %s: %s", to, exc)
