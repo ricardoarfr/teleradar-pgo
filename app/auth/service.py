@@ -4,6 +4,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
+# passlib 1.7.4 não suporta bcrypt >= 4.0 nativamente (removeu __about__)
+import bcrypt as _bcrypt_module
+if not hasattr(_bcrypt_module, "__about__"):
+    _bcrypt_module.__about__ = type("_about", (), {"__version__": _bcrypt_module.__version__})()
+
 from fastapi import HTTPException, Request, status
 from passlib.context import CryptContext
 from sqlalchemy import select
