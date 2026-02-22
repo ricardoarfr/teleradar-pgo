@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User, UserRole, UserStatus
 from app.database.connection import get_db
-from app.modules.clients import schemas, service
+from app.modules.partners import schemas, service
 from app.rbac.dependencies import require_roles
 from app.utils.responses import success
 
@@ -16,7 +16,7 @@ _admin_or_master = require_roles(UserRole.ADMIN, UserRole.MASTER)
 
 
 @router.get("/", response_model=None)
-async def list_clients(
+async def list_partners(
     page: int = 1,
     per_page: int = 20,
     search: Optional[str] = None,
@@ -24,12 +24,12 @@ async def list_clients(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(_admin_or_master),
 ):
-    clients, total = await service.list_clients(db, admin, page, per_page, search, status)
+    partners, total = await service.list_partners(db, admin, page, per_page, search, status)
 
     results = []
-    for u in clients:
-        profile = u.client_profile
-        results.append(schemas.ClientListItem(
+    for u in partners:
+        profile = u.partner_profile
+        results.append(schemas.PartnerListItem(
             id=u.id,
             name=u.name,
             email=u.email,
@@ -42,7 +42,7 @@ async def list_clients(
             address_city=profile.address_city if profile else None,
         ))
 
-    return success("Lista de clientes.", {
+    return success("Lista de parceiros.", {
         "results": results,
         "total": total,
         "page": page,
@@ -51,24 +51,24 @@ async def list_clients(
 
 
 @router.post("/", response_model=None)
-async def create_client(
-    data: schemas.ClientCreate,
+async def create_partner(
+    data: schemas.PartnerCreate,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(_admin_or_master),
 ):
-    user = await service.create_client(db, data, admin)
-    return success("Cliente cadastrado com sucesso.", schemas.ClientDetail.model_validate(user))
+    user = await service.create_partner(db, data, admin)
+    return success("Parceiro cadastrado com sucesso.", schemas.PartnerDetail.model_validate(user))
 
 
-@router.get("/{client_id}", response_model=None)
-async def get_client(
-    client_id: UUID,
+@router.get("/{partner_id}", response_model=None)
+async def get_partner(
+    partner_id: UUID,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(_admin_or_master),
 ):
-    user = await service.get_client(db, client_id, admin)
-    profile = user.client_profile
-    detail = schemas.ClientDetail(
+    user = await service.get_partner(db, partner_id, admin)
+    profile = user.partner_profile
+    detail = schemas.PartnerDetail(
         id=user.id,
         name=user.name,
         email=user.email,
@@ -77,21 +77,21 @@ async def get_client(
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at,
-        profile=schemas.ClientProfileDetail.model_validate(profile) if profile else None,
+        profile=schemas.PartnerProfileDetail.model_validate(profile) if profile else None,
     )
-    return success("Dados do cliente.", detail)
+    return success("Dados do parceiro.", detail)
 
 
-@router.put("/{client_id}", response_model=None)
-async def update_client(
-    client_id: UUID,
-    data: schemas.ClientUpdate,
+@router.put("/{partner_id}", response_model=None)
+async def update_partner(
+    partner_id: UUID,
+    data: schemas.PartnerUpdate,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(_admin_or_master),
 ):
-    user = await service.update_client(db, client_id, data, admin)
-    profile = user.client_profile
-    detail = schemas.ClientDetail(
+    user = await service.update_partner(db, partner_id, data, admin)
+    profile = user.partner_profile
+    detail = schemas.PartnerDetail(
         id=user.id,
         name=user.name,
         email=user.email,
@@ -100,26 +100,26 @@ async def update_client(
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at,
-        profile=schemas.ClientProfileDetail.model_validate(profile) if profile else None,
+        profile=schemas.PartnerProfileDetail.model_validate(profile) if profile else None,
     )
-    return success("Cliente atualizado.", detail)
+    return success("Parceiro atualizado.", detail)
 
 
-@router.post("/{client_id}/block", response_model=None)
-async def block_client(
-    client_id: UUID,
+@router.post("/{partner_id}/block", response_model=None)
+async def block_partner(
+    partner_id: UUID,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(_admin_or_master),
 ):
-    user = await service.block_client(db, client_id, admin)
-    return success("Cliente bloqueado.", schemas.ClientDetail.model_validate(user))
+    user = await service.block_partner(db, partner_id, admin)
+    return success("Parceiro bloqueado.", schemas.PartnerDetail.model_validate(user))
 
 
-@router.post("/{client_id}/unblock", response_model=None)
-async def unblock_client(
-    client_id: UUID,
+@router.post("/{partner_id}/unblock", response_model=None)
+async def unblock_partner(
+    partner_id: UUID,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(_admin_or_master),
 ):
-    user = await service.unblock_client(db, client_id, admin)
-    return success("Cliente desbloqueado.", schemas.ClientDetail.model_validate(user))
+    user = await service.unblock_partner(db, partner_id, admin)
+    return success("Parceiro desbloqueado.", schemas.PartnerDetail.model_validate(user))

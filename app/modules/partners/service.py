@@ -9,20 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.models import AuditLog, User, UserRole, UserStatus
-from app.modules.clients.models import ClientProfile
-from app.modules.clients.schemas import ClientCreate, ClientUpdate
+from app.modules.partners.models import PartnerProfile
+from app.modules.partners.schemas import PartnerCreate, PartnerUpdate
 
 logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
 
-async def create_client(db: AsyncSession, data: ClientCreate, admin: User) -> User:
-    # ADMIN só pode criar clientes no próprio tenant
+async def create_partner(db: AsyncSession, data: PartnerCreate, admin: User) -> User:
     if admin.role == UserRole.ADMIN:
         if admin.tenant_id is None:
             raise HTTPException(status_code=400, detail="Administrador sem tenant associado")
         if data.tenant_id != admin.tenant_id:
-            raise HTTPException(status_code=403, detail="ADMIN só pode criar clientes no próprio tenant")
+            raise HTTPException(status_code=403, detail="ADMIN só pode criar parceiros no próprio tenant")
 
     existing = await db.execute(select(User).where(User.email == data.email))
     if existing.scalar_one_or_none():
@@ -32,7 +31,7 @@ async def create_client(db: AsyncSession, data: ClientCreate, admin: User) -> Us
         name=data.name,
         email=data.email,
         password_hash=pwd_context.hash(data.password),
-        role=UserRole.CLIENT,
+        role=UserRole.PARTNER,
         status=UserStatus.APPROVED,
         tenant_id=data.tenant_id,
         is_active=True,
@@ -40,9 +39,10 @@ async def create_client(db: AsyncSession, data: ClientCreate, admin: User) -> Us
     db.add(user)
     await db.flush()
 
-    profile = ClientProfile(
+    profile = PartnerProfile(
         user_id=user.id,
         tenant_id=data.tenant_id,
+        person_type=data.person_type,
         cpf_cnpj=data.cpf_cnpj,
         phone=data.phone,
         address_street=data.address_street,
@@ -58,15 +58,15 @@ async def create_client(db: AsyncSession, data: ClientCreate, admin: User) -> Us
 
     db.add(AuditLog(
         user_id=admin.id,
-        action="CREATE_CLIENT",
-        details={"client_email": data.email, "tenant_id": str(data.tenant_id)},
+        action="CREATE_PARTNER",
+        details={"partner_email": data.email, "tenant_id": str(data.tenant_id)},
     ))
     await db.commit()
     await db.refresh(user)
     return user
 
 
-async def list_clients(
+async def list_partners(
     db: AsyncSession,
     admin: User,
     page: int = 1,
@@ -76,16 +76,15 @@ async def list_clients(
 ) -> tuple[list[User], int]:
     query = (
         select(User)
-        .options(selectinload(User.client_profile))
-        .where(User.role == UserRole.CLIENT, User.is_active == True)
+        .options(selectinload(User.partner_profile))
+        .where(User.role == UserRole.PARTNER, User.is_active == True)
     )
     count_query = (
         select(func.count())
         .select_from(User)
-        .where(User.role == UserRole.CLIENT, User.is_active == True)
+        .where(User.role == UserRole.PARTNER, User.is_active == True)
     )
 
-    # ADMIN vê somente clientes do próprio tenant
     if admin.role == UserRole.ADMIN and admin.tenant_id:
         query = query.where(User.tenant_id == admin.tenant_id)
         count_query = count_query.where(User.tenant_id == admin.tenant_id)
@@ -107,15 +106,15 @@ async def list_clients(
     return users, total
 
 
-async def get_client(db: AsyncSession, client_id: UUID, admin: User) -> User:
+async def get_partner(db: AsyncSession, partner_id: UUID, admin: User) -> User:
     result = await db.execute(
         select(User)
-        .options(selectinload(User.client_profile))
-        .where(User.id == client_id, User.role == UserRole.CLIENT)
+        .options(selectinload(User.partner_profile))
+        .where(User.id == partner_id, User.role == UserRole.PARTNER)
     )
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+        raise HTTPException(status_code=404, detail="Parceiro não encontrado")
 
     if admin.role == UserRole.ADMIN and admin.tenant_id and user.tenant_id != admin.tenant_id:
         raise HTTPException(status_code=403, detail="Acesso negado")
@@ -123,20 +122,20 @@ async def get_client(db: AsyncSession, client_id: UUID, admin: User) -> User:
     return user
 
 
-async def update_client(db: AsyncSession, client_id: UUID, data: ClientUpdate, admin: User) -> User:
-    user = await get_client(db, client_id, admin)
+async def update_partner(db: AsyncSession, partner_id: UUID, data: PartnerUpdate, admin: User) -> User:
+    user = await get_partner(db, partner_id, admin)
 
     if data.name is not None:
         user.name = data.name
         user.updated_at = datetime.utcnow()
 
-    profile = user.client_profile
+    profile = user.partner_profile
     if profile is None:
-        profile = ClientProfile(user_id=user.id, tenant_id=user.tenant_id)
+        profile = PartnerProfile(user_id=user.id, tenant_id=user.tenant_id)
         db.add(profile)
 
     update_fields = {
-        "cpf_cnpj", "phone", "address_street", "address_number",
+        "person_type", "cpf_cnpj", "phone", "address_street", "address_number",
         "address_complement", "address_neighborhood", "address_city",
         "address_state", "address_cep", "notes",
     }
@@ -149,38 +148,38 @@ async def update_client(db: AsyncSession, client_id: UUID, data: ClientUpdate, a
 
     db.add(AuditLog(
         user_id=admin.id,
-        action="UPDATE_CLIENT",
-        details={"client_id": str(client_id)},
+        action="UPDATE_PARTNER",
+        details={"partner_id": str(partner_id)},
     ))
     await db.commit()
     await db.refresh(user)
     return user
 
 
-async def block_client(db: AsyncSession, client_id: UUID, admin: User, reason: str | None = None) -> User:
-    user = await get_client(db, client_id, admin)
+async def block_partner(db: AsyncSession, partner_id: UUID, admin: User, reason: str | None = None) -> User:
+    user = await get_partner(db, partner_id, admin)
     user.status = UserStatus.BLOCKED
     user.updated_at = datetime.utcnow()
     db.add(AuditLog(
         user_id=admin.id,
-        action="BLOCK_CLIENT",
-        details={"client_id": str(client_id), "reason": reason},
+        action="BLOCK_PARTNER",
+        details={"partner_id": str(partner_id), "reason": reason},
     ))
     await db.commit()
     await db.refresh(user)
     return user
 
 
-async def unblock_client(db: AsyncSession, client_id: UUID, admin: User) -> User:
-    user = await get_client(db, client_id, admin)
+async def unblock_partner(db: AsyncSession, partner_id: UUID, admin: User) -> User:
+    user = await get_partner(db, partner_id, admin)
     user.status = UserStatus.APPROVED
     user.login_attempts = 0
     user.locked_until = None
     user.updated_at = datetime.utcnow()
     db.add(AuditLog(
         user_id=admin.id,
-        action="UNBLOCK_CLIENT",
-        details={"client_id": str(client_id)},
+        action="UNBLOCK_PARTNER",
+        details={"partner_id": str(partner_id)},
     ))
     await db.commit()
     await db.refresh(user)

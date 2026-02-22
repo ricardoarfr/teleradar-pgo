@@ -12,12 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserStatusBadge } from "@/components/users/user-status-badge";
-import { useClients } from "@/hooks/use-clients";
+import { usePartners } from "@/hooks/use-partners";
 import type { UserStatus } from "@/types/user";
 import { formatDate } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Eye, Plus, Search } from "lucide-react";
 
-export function ClientsTable() {
+export function PartnersTable() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<UserStatus | "ALL">("ALL");
@@ -31,16 +31,16 @@ export function ClientsTable() {
     ...(filterStatus !== "ALL" ? { status: filterStatus } : {}),
   };
 
-  const { data, isLoading } = useClients(params);
+  const { data, isLoading } = usePartners(params);
 
-  const clients = data?.results ?? [];
+  const partners = data?.results ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / perPage);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    clearTimeout((window as any)._clientSearchTimeout);
-    (window as any)._clientSearchTimeout = setTimeout(() => {
+    clearTimeout((window as any)._partnerSearchTimeout);
+    (window as any)._partnerSearchTimeout = setTimeout(() => {
       setDebouncedSearch(value);
       setPage(1);
     }, 400);
@@ -76,10 +76,10 @@ export function ClientsTable() {
           </Select>
         </div>
 
-        <Link href="/clients/new">
+        <Link href="/partners/new">
           <Button size="sm">
             <Plus className="h-4 w-4" />
-            Novo Cliente
+            Novo Parceiro
           </Button>
         </Link>
       </div>
@@ -106,28 +106,28 @@ export function ClientsTable() {
                   Carregando...
                 </td>
               </tr>
-            ) : clients.length === 0 ? (
+            ) : partners.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                  Nenhum cliente encontrado.
+                  Nenhum parceiro encontrado.
                 </td>
               </tr>
             ) : (
-              clients.map((client) => (
-                <tr key={client.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{client.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{client.email}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{client.phone ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{client.cpf_cnpj ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{client.address_city ?? "—"}</td>
+              partners.map((partner) => (
+                <tr key={partner.id} className="hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium">{partner.name}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{partner.email}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{partner.phone ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{partner.cpf_cnpj ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{partner.address_city ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <UserStatusBadge status={client.status} />
+                    <UserStatusBadge status={partner.status} />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {formatDate(client.created_at)}
+                    {formatDate(partner.created_at)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/clients/${client.id}`}>
+                    <Link href={`/partners/${partner.id}`}>
                       <Button variant="ghost" size="icon">
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -144,7 +144,7 @@ export function ClientsTable() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            {total} cliente{total !== 1 ? "s" : ""} no total
+            {total} parceiro{total !== 1 ? "s" : ""} no total
           </p>
           <div className="flex items-center gap-2">
             <Button

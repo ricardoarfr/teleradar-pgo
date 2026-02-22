@@ -5,17 +5,17 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClientForm } from "@/components/clients/client-form";
-import { useCreateClient } from "@/hooks/use-clients";
+import { PartnerForm } from "@/components/partners/partner-form";
+import { useCreatePartner } from "@/hooks/use-partners";
 import { getMeAction } from "@/actions/auth-actions";
 import { useQuery } from "@tanstack/react-query";
-import type { ClientCreate } from "@/types/client";
+import type { PartnerCreate } from "@/types/partner";
 import { toast } from "@/components/ui/use-toast";
 
-export default function NewClientPage() {
+export default function NewPartnerPage() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
-  const createClient = useCreateClient();
+  const createPartner = useCreatePartner();
 
   const { data: me } = useQuery({
     queryKey: ["me"],
@@ -24,15 +24,15 @@ export default function NewClientPage() {
 
   const tenantId = me?.tenant_id ?? "";
 
-  const handleSubmit = async (data: ClientCreate) => {
+  const handleSubmit = async (data: PartnerCreate) => {
     setApiError(null);
     try {
-      await createClient.mutateAsync(data);
-      toast({ title: "Cliente cadastrado!", description: "O cliente foi cadastrado com sucesso." });
-      router.push("/clients");
+      await createPartner.mutateAsync(data);
+      toast({ title: "Parceiro cadastrado!", description: "O parceiro foi cadastrado com sucesso." });
+      router.push("/partners");
     } catch (err: any) {
       setApiError(
-        err?.response?.data?.detail ?? "Erro ao cadastrar cliente. Verifique os dados."
+        err?.response?.data?.detail ?? "Erro ao cadastrar parceiro. Verifique os dados."
       );
     }
   };
@@ -48,27 +48,27 @@ export default function NewClientPage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <Link href="/clients" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/partners" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
-          Voltar para clientes
+          Voltar para parceiros
         </Link>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Novo cliente</CardTitle>
+          <CardTitle>Novo parceiro</CardTitle>
           <CardDescription>
-            Cadastre um novo cliente. Ele será ativado imediatamente e poderá acessar o portal do cliente.
+            Cadastre um novo parceiro. Ele será ativado imediatamente e poderá acessar o portal do parceiro.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ClientForm
+          <PartnerForm
             mode="create"
             tenantId={tenantId}
             onSubmit={handleSubmit}
-            isSubmitting={createClient.isPending}
+            isSubmitting={createPartner.isPending}
             apiError={apiError}
-            onCancel={() => router.push("/clients")}
+            onCancel={() => router.push("/partners")}
           />
         </CardContent>
       </Card>

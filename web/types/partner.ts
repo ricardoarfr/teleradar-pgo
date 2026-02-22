@@ -1,9 +1,10 @@
 import type { UserStatus } from "./user";
 
-export interface ClientProfile {
+export interface PartnerProfile {
   id: string;
   user_id: string;
   tenant_id: string;
+  person_type: string | null;
   cpf_cnpj: string | null;
   phone: string | null;
   address_street: string | null;
@@ -18,7 +19,7 @@ export interface ClientProfile {
   updated_at: string;
 }
 
-export interface Client {
+export interface Partner {
   id: string;
   name: string;
   email: string;
@@ -27,10 +28,10 @@ export interface Client {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  profile: ClientProfile | null;
+  profile: PartnerProfile | null;
 }
 
-export interface ClientListItem {
+export interface PartnerListItem {
   id: string;
   name: string;
   email: string;
@@ -43,25 +44,26 @@ export interface ClientListItem {
   address_city: string | null;
 }
 
-export interface ClientListResponse {
-  results: ClientListItem[];
+export interface PartnerListResponse {
+  results: PartnerListItem[];
   total: number;
   page: number;
   per_page: number;
 }
 
-export interface ListClientsParams {
+export interface ListPartnersParams {
   page?: number;
   per_page?: number;
   search?: string;
   status?: UserStatus;
 }
 
-export interface ClientCreate {
+export interface PartnerCreate {
   name: string;
   email: string;
   password: string;
   tenant_id: string;
+  person_type?: string;
   cpf_cnpj?: string;
   phone?: string;
   address_street?: string;
@@ -74,8 +76,9 @@ export interface ClientCreate {
   notes?: string;
 }
 
-export interface ClientUpdate {
+export interface PartnerUpdate {
   name?: string;
+  person_type?: string;
   cpf_cnpj?: string;
   phone?: string;
   address_street?: string;
