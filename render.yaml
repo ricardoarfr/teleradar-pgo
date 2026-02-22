@@ -1,5 +1,21 @@
 services:
   - type: web
+    name: teleradar-pgo-web
+    env: node
+    rootDir: web
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://teleradar-pgo-api.onrender.com
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      # Configurar manualmente no dashboard do Render (mesma SECRET_KEY da API):
+      # SECRET_KEY
+
+  - type: web
     name: teleradar-pgo-api
     env: python
     pythonVersion: "3.11.9"
@@ -29,7 +45,7 @@ services:
       - key: LOCK_DURATION_MINUTES
         value: "15"
       - key: CORS_ORIGINS
-        value: "https://teleradar-pgo-api.onrender.com"
+        value: "https://teleradar-pgo-api.onrender.com,https://teleradar-pgo-web.onrender.com"
       # Configurar manualmente no dashboard do Render:
       # SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD
       # ADMIN_MASTER_EMAIL
