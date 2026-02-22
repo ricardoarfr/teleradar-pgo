@@ -6,8 +6,6 @@ Create Date: 2026-02-21
 """
 from typing import Sequence, Union
 
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision: str = "003"
@@ -17,30 +15,25 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    existing = inspector.get_table_names()
+    op.execute("CREATE TYPE IF NOT EXISTS projectstatus AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')")
 
-    postgresql.ENUM("PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", name="projectstatus").create(bind, checkfirst=True)
-
-    if "projects" not in existing:
-        op.create_table(
-            "projects",
-            sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-            sa.Column("tenant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("name", sa.String(255), nullable=False),
-            sa.Column("description", sa.Text(), nullable=True),
-            sa.Column("status", sa.Enum("PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", name="projectstatus", create_type=False), nullable=False),
-            sa.Column("responsible_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
-            sa.Column("start_date", sa.Date(), nullable=True),
-            sa.Column("end_date", sa.Date(), nullable=True),
-            sa.Column("created_at", sa.DateTime(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), nullable=False),
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id UUID PRIMARY KEY,
+            tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            status projectstatus NOT NULL,
+            responsible_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            start_date DATE,
+            end_date DATE,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL
         )
-        op.create_index("ix_projects_tenant_id", "projects", ["tenant_id"])
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_projects_tenant_id ON projects (tenant_id)")
 
 
 def downgrade() -> None:
-    op.drop_index("ix_projects_tenant_id", "projects")
-    op.drop_table("projects")
+    op.execute("DROP TABLE IF EXISTS projects")
     op.execute("DROP TYPE IF EXISTS projectstatus")

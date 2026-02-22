@@ -6,8 +6,6 @@ Create Date: 2026-02-21
 """
 from typing import Sequence, Union
 
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision: str = "005"
@@ -17,33 +15,27 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    existing = inspector.get_table_names()
+    op.execute("CREATE TYPE IF NOT EXISTS paymentstatus AS ENUM ('PENDING', 'PAID', 'OVERDUE', 'CANCELLED')")
 
-    postgresql.ENUM("PENDING", "PAID", "OVERDUE", "CANCELLED", name="paymentstatus").create(bind, checkfirst=True)
-
-    if "payments" not in existing:
-        op.create_table(
-            "payments",
-            sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-            sa.Column("tenant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("contract_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("contracts.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("amount", sa.Numeric(10, 2), nullable=False),
-            sa.Column("due_date", sa.Date(), nullable=False),
-            sa.Column("paid_at", sa.DateTime(), nullable=True),
-            sa.Column("status", sa.Enum("PENDING", "PAID", "OVERDUE", "CANCELLED", name="paymentstatus", create_type=False), nullable=False),
-            sa.Column("reference", sa.String(100), nullable=True),
-            sa.Column("notes", sa.Text(), nullable=True),
-            sa.Column("created_at", sa.DateTime(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), nullable=False),
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS payments (
+            id UUID PRIMARY KEY,
+            tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            contract_id UUID NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+            amount NUMERIC(10,2) NOT NULL,
+            due_date DATE NOT NULL,
+            paid_at TIMESTAMP,
+            status paymentstatus NOT NULL,
+            reference VARCHAR(100),
+            notes TEXT,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL
         )
-        op.create_index("ix_payments_tenant_id", "payments", ["tenant_id"])
-        op.create_index("ix_payments_contract_id", "payments", ["contract_id"])
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_payments_tenant_id ON payments (tenant_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_payments_contract_id ON payments (contract_id)")
 
 
 def downgrade() -> None:
-    op.drop_index("ix_payments_contract_id", "payments")
-    op.drop_index("ix_payments_tenant_id", "payments")
-    op.drop_table("payments")
+    op.execute("DROP TABLE IF EXISTS payments")
     op.execute("DROP TYPE IF EXISTS paymentstatus")
