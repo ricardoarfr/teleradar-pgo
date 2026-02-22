@@ -123,6 +123,7 @@ type PartnerFormProps = PartnerFormCreateProps | PartnerFormEditProps;
 export function PartnerForm(props: PartnerFormProps) {
   const isCreate = props.mode === "create";
   const [apiPopulated, setApiPopulated] = useState(false);
+  const [cepPopulated, setCepPopulated] = useState(false);
 
   const editPartner = !isCreate ? (props as PartnerFormEditProps).partner : null;
   const rawCpfCnpj = editPartner?.profile?.cpf_cnpj ?? "";
@@ -166,8 +167,10 @@ export function PartnerForm(props: PartnerFormProps) {
   const personType = (watch("person_type") as "PF" | "PJ") ?? "PF";
   const isPJ = personType === "PJ";
 
-  // Campos preenchidos pela API ficam readonly apenas para PJ
+  // Campos preenchidos pela API CNPJ ficam readonly apenas para PJ
   const apiReadonly = isPJ && apiPopulated;
+  // Campos preenchidos pelo CEP ficam readonly para PF
+  const cepReadonly = !isPJ && cepPopulated;
 
   // ─── Tipo de pessoa ────────────────────────────────────────────────────
   const handlePersonTypeChange = (newType: "PF" | "PJ") => {
@@ -177,10 +180,11 @@ export function PartnerForm(props: PartnerFormProps) {
     }
   };
 
-  // ─── Auto-fill CEP via ViaCEP (apenas para PF) ─────────────────────────
+  // ─── Auto-fill CEP via ViaCEP ─────────────────────────────────────────
   const handleCepChange = (raw: string) => {
     const masked = maskCEP(raw);
     setValue("address_cep", masked, { shouldValidate: true });
+    setCepPopulated(false);
     if (masked.replace(/\D/g, "").length === 8) {
       fetch(`https://viacep.com.br/ws/${masked.replace(/\D/g, "")}/json/`)
         .then((r) => r.json())
@@ -190,6 +194,7 @@ export function PartnerForm(props: PartnerFormProps) {
             setValue("address_neighborhood", data.bairro ?? "");
             setValue("address_city", data.localidade ?? "");
             setValue("address_state", data.uf ?? "");
+            setCepPopulated(true);
           }
         })
         .catch(() => {});
@@ -276,7 +281,42 @@ export function PartnerForm(props: PartnerFormProps) {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {/* Nome */}
+          {/* CPF ou CNPJ */}
+          <div className="space-y-2">
+            {isPJ ? (
+              <>
+                <Label htmlFor="cpf_cnpj">
+                  CNPJ{" "}
+                  <span className="text-xs text-muted-foreground font-normal">
+                    (preenche dados automaticamente)
+                  </span>
+                </Label>
+                <Input
+                  id="cpf_cnpj"
+                  {...register("cpf_cnpj")}
+                  placeholder="00.000.000/0000-00"
+                  onChange={(e) => handleCnpjChange(e.target.value)}
+                />
+              </>
+            ) : (
+              <>
+                <Label htmlFor="cpf_cnpj">CPF</Label>
+                <Input
+                  id="cpf_cnpj"
+                  {...register("cpf_cnpj")}
+                  placeholder="000.000.000-00"
+                  onChange={(e) =>
+                    setValue("cpf_cnpj", maskCPF(e.target.value), { shouldValidate: true })
+                  }
+                />
+              </>
+            )}
+            {errors.cpf_cnpj && (
+              <p className="text-xs text-destructive">{errors.cpf_cnpj.message}</p>
+            )}
+          </div>
+
+          {/* Nome / Razão social */}
           <div className="space-y-2">
             <Label htmlFor="name">
               {isPJ ? "Razão social" : "Nome completo"}{" "}
@@ -293,15 +333,6 @@ export function PartnerForm(props: PartnerFormProps) {
             />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
-
-          {/* E-mail (apenas criação) */}
-          {isCreate && (
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail *</Label>
-              <Input id="email" type="email" {...register("email")} placeholder="email@exemplo.com" />
-              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-            </div>
-          )}
         </div>
 
         {/* Senha (apenas criação) */}
@@ -336,39 +367,18 @@ export function PartnerForm(props: PartnerFormProps) {
             />
           </div>
 
-          {/* CPF ou CNPJ */}
+          {/* E-mail */}
           <div className="space-y-2">
-            {isPJ ? (
-              <>
-                <Label htmlFor="cpf_cnpj">
-                  CNPJ{" "}
-                  <span className="text-xs text-muted-foreground font-normal">
-                    (preenche dados automaticamente)
-                  </span>
-                </Label>
-                <Input
-                  id="cpf_cnpj"
-                  {...register("cpf_cnpj")}
-                  placeholder="00.000.000/0000-00"
-                  onChange={(e) => handleCnpjChange(e.target.value)}
-                />
-              </>
-            ) : (
-              <>
-                <Label htmlFor="cpf_cnpj">CPF</Label>
-                <Input
-                  id="cpf_cnpj"
-                  {...register("cpf_cnpj")}
-                  placeholder="000.000.000-00"
-                  onChange={(e) =>
-                    setValue("cpf_cnpj", maskCPF(e.target.value), { shouldValidate: true })
-                  }
-                />
-              </>
-            )}
-            {errors.cpf_cnpj && (
-              <p className="text-xs text-destructive">{errors.cpf_cnpj.message}</p>
-            )}
+            <Label htmlFor="email">E-mail {isCreate && "*"}</Label>
+            <Input
+              id="email"
+              type="email"
+              {...register("email")}
+              placeholder="email@exemplo.com"
+              readOnly={!isCreate}
+              className={!isCreate ? "bg-muted cursor-not-allowed" : ""}
+            />
+            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
           </div>
         </div>
       </div>
@@ -412,8 +422,8 @@ export function PartnerForm(props: PartnerFormProps) {
               id="address_street"
               {...register("address_street")}
               placeholder="Rua, Avenida..."
-              readOnly={apiReadonly}
-              className={apiReadonly ? "bg-muted cursor-not-allowed" : ""}
+              readOnly={apiReadonly || cepReadonly}
+              className={apiReadonly || cepReadonly ? "bg-muted cursor-not-allowed" : ""}
             />
           </div>
         </div>
@@ -450,8 +460,8 @@ export function PartnerForm(props: PartnerFormProps) {
               id="address_neighborhood"
               {...register("address_neighborhood")}
               placeholder="Bairro"
-              readOnly={apiReadonly}
-              className={apiReadonly ? "bg-muted cursor-not-allowed" : ""}
+              readOnly={apiReadonly || cepReadonly}
+              className={apiReadonly || cepReadonly ? "bg-muted cursor-not-allowed" : ""}
             />
           </div>
 
@@ -462,8 +472,8 @@ export function PartnerForm(props: PartnerFormProps) {
               id="address_city"
               {...register("address_city")}
               placeholder="Cidade"
-              readOnly={apiReadonly}
-              className={apiReadonly ? "bg-muted cursor-not-allowed" : ""}
+              readOnly={apiReadonly || cepReadonly}
+              className={apiReadonly || cepReadonly ? "bg-muted cursor-not-allowed" : ""}
             />
           </div>
 
@@ -475,8 +485,8 @@ export function PartnerForm(props: PartnerFormProps) {
               {...register("address_state")}
               placeholder="PR"
               maxLength={2}
-              readOnly={apiReadonly}
-              className={`uppercase${apiReadonly ? " bg-muted cursor-not-allowed" : ""}`}
+              readOnly={apiReadonly || cepReadonly}
+              className={`uppercase${apiReadonly || cepReadonly ? " bg-muted cursor-not-allowed" : ""}`}
             />
           </div>
         </div>
