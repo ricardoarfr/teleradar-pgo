@@ -16,7 +16,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # 1. Adiciona o novo valor PARTNER ao enum userrole
+    # Precisa de COMMIT antes de usar o novo valor (restrição do PostgreSQL)
     op.execute("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'PARTNER'")
+    op.execute("COMMIT")
 
     # 2. Migra usuários existentes com role CLIENT para PARTNER
     op.execute("UPDATE users SET role = 'PARTNER' WHERE role = 'CLIENT'")
