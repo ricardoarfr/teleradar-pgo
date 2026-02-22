@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Radio } from "lucide-react";
+import { Users, Radio, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
+  {
+    label: "Clientes",
+    href: "/clients",
+    icon: UserCheck,
+  },
   {
     label: "Usuários",
     href: "/admin/users",
