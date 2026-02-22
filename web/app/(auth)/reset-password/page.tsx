@@ -1,7 +1,7 @@
-"use client";
-
 import { Suspense } from "react";
 import ResetPasswordContent from "./reset-password-content";
+
+export const dynamic = "force-dynamic";
 
 export default function Page() {
   return (
