@@ -27,7 +27,7 @@ def upgrade() -> None:
     DO $$
     BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'userrole') THEN
-            CREATE TYPE userrole AS ENUM ('MASTER', 'ADMIN', 'MANAGER', 'STAFF', 'CLIENT');
+            CREATE TYPE userrole AS ENUM ('MASTER', 'ADMIN', 'MANAGER', 'STAFF', 'PARTNER');
         END IF;
     END$$;
     """)

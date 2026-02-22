@@ -1,4 +1,4 @@
-"""Tabela client_profiles
+"""Tabela partner_profiles
 
 Revision ID: 006
 Revises: 005
@@ -16,10 +16,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.execute("""
-        CREATE TABLE IF NOT EXISTS client_profiles (
+        CREATE TABLE IF NOT EXISTS partner_profiles (
             id UUID PRIMARY KEY,
             user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
             tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            person_type VARCHAR(2),
             cpf_cnpj VARCHAR(20),
             phone VARCHAR(20),
             address_street VARCHAR(255),
@@ -34,9 +35,9 @@ def upgrade() -> None:
             updated_at TIMESTAMP NOT NULL
         )
     """)
-    op.execute("CREATE INDEX IF NOT EXISTS ix_client_profiles_user_id ON client_profiles (user_id)")
-    op.execute("CREATE INDEX IF NOT EXISTS ix_client_profiles_tenant_id ON client_profiles (tenant_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_partner_profiles_user_id ON partner_profiles (user_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_partner_profiles_tenant_id ON partner_profiles (tenant_id)")
 
 
 def downgrade() -> None:
-    op.execute("DROP TABLE IF EXISTS client_profiles")
+    op.execute("DROP TABLE IF EXISTS partner_profiles")
