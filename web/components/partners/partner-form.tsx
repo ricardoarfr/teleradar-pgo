@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -48,40 +49,45 @@ function guessPersonType(cpf_cnpj: string | null): "PF" | "PJ" {
 
 // ─── Schemas de validação ─────────────────────────────────────────────────
 
-const cepRequired = z
-  .string()
-  .min(1, "CEP obrigatório")
-  .refine((v) => v.replace(/\D/g, "").length === 8, "CEP inválido (use 00000-000)");
-
-const cepOptional = z
+const cepField = z
   .string()
   .optional()
   .refine((v) => !v || v.replace(/\D/g, "").length === 8, "CEP inválido (use 00000-000)");
 
-export const partnerCreateSchema = z.object({
-  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  email: z.string().email("E-mail inválido"),
-  password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres"),
-  tenant_id: z.string().uuid("Tenant inválido"),
-  person_type: z.enum(["PF", "PJ"]).default("PF"),
-  cpf_cnpj: z.string().optional(),
-  phone: z.string().optional(),
-  address_cep: cepRequired,
-  address_street: z.string().optional(),
-  address_number: z.string().optional(),
-  address_complement: z.string().optional(),
-  address_neighborhood: z.string().optional(),
-  address_city: z.string().optional(),
-  address_state: z.string().max(2).optional(),
-  notes: z.string().optional(),
-});
+export const partnerCreateSchema = z
+  .object({
+    name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+    email: z.string().email("E-mail inválido"),
+    password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres"),
+    tenant_id: z.string().uuid("Tenant inválido"),
+    person_type: z.enum(["PF", "PJ"]).default("PF"),
+    cpf_cnpj: z.string().optional(),
+    phone: z.string().optional(),
+    address_cep: cepField,
+    address_street: z.string().optional(),
+    address_number: z.string().optional(),
+    address_complement: z.string().optional(),
+    address_neighborhood: z.string().optional(),
+    address_city: z.string().optional(),
+    address_state: z.string().max(2).optional(),
+    notes: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.person_type === "PF" && !data.address_cep) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["address_cep"],
+        message: "CEP obrigatório para Pessoa Física",
+      });
+    }
+  });
 
 export const partnerUpdateSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").optional(),
   person_type: z.enum(["PF", "PJ"]).optional(),
   cpf_cnpj: z.string().optional(),
   phone: z.string().optional(),
-  address_cep: cepOptional,
+  address_cep: cepField,
   address_street: z.string().optional(),
   address_number: z.string().optional(),
   address_complement: z.string().optional(),
@@ -116,6 +122,7 @@ type PartnerFormProps = PartnerFormCreateProps | PartnerFormEditProps;
 
 export function PartnerForm(props: PartnerFormProps) {
   const isCreate = props.mode === "create";
+  const [apiPopulated, setApiPopulated] = useState(false);
 
   const editPartner = !isCreate ? (props as PartnerFormEditProps).partner : null;
   const rawCpfCnpj = editPartner?.profile?.cpf_cnpj ?? "";
@@ -157,8 +164,20 @@ export function PartnerForm(props: PartnerFormProps) {
   const { register, handleSubmit, watch, setValue, formState: { errors } } = form as any;
 
   const personType = (watch("person_type") as "PF" | "PJ") ?? "PF";
+  const isPJ = personType === "PJ";
 
-  // ─── Auto-fill CEP via ViaCEP ──────────────────────────────────────────
+  // Campos preenchidos pela API ficam readonly apenas para PJ
+  const apiReadonly = isPJ && apiPopulated;
+
+  // ─── Tipo de pessoa ────────────────────────────────────────────────────
+  const handlePersonTypeChange = (newType: "PF" | "PJ") => {
+    setValue("person_type", newType);
+    if (newType === "PF") {
+      setApiPopulated(false);
+    }
+  };
+
+  // ─── Auto-fill CEP via ViaCEP (apenas para PF) ─────────────────────────
   const handleCepChange = (raw: string) => {
     const masked = maskCEP(raw);
     setValue("address_cep", masked, { shouldValidate: true });
@@ -181,23 +200,29 @@ export function PartnerForm(props: PartnerFormProps) {
   const handleCnpjChange = (raw: string) => {
     const masked = maskCNPJ(raw);
     setValue("cpf_cnpj", masked, { shouldValidate: true });
+    setApiPopulated(false);
     const digits = masked.replace(/\D/g, "");
     if (digits.length === 14) {
       fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
           if (!data) return;
-          if (data.razao_social) setValue("name", data.razao_social);
+          let filled = false;
+          if (data.razao_social) {
+            setValue("name", data.razao_social);
+            filled = true;
+          }
           if (data.cep) {
-            const cepMasked = maskCEP(data.cep);
-            setValue("address_cep", cepMasked);
+            setValue("address_cep", maskCEP(data.cep));
             setValue("address_street", data.logradouro ?? "");
             setValue("address_neighborhood", data.bairro ?? "");
             setValue("address_city", data.municipio ?? "");
             setValue("address_state", data.uf ?? "");
             if (data.numero) setValue("address_number", data.numero);
             if (data.complemento) setValue("address_complement", data.complemento);
+            filled = true;
           }
+          if (filled) setApiPopulated(true);
         })
         .catch(() => {});
     }
@@ -215,20 +240,34 @@ export function PartnerForm(props: PartnerFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-      {/* Dados básicos */}
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
+
+      {/* ── DADOS ──────────────────────────────────────────────────────── */}
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Dados básicos
+          Dados
         </h3>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* Nome */}
           <div className="space-y-2">
-            <Label htmlFor="name">Nome completo *</Label>
-            <Input id="name" {...register("name")} placeholder="Nome do parceiro" />
+            <Label htmlFor="name">
+              {isPJ ? "Razão social" : "Nome completo"}{" "}
+              {apiReadonly && (
+                <span className="text-xs text-muted-foreground font-normal">(preenchido pela API)</span>
+              )}
+            </Label>
+            <Input
+              id="name"
+              {...register("name")}
+              placeholder={isPJ ? "Razão social da empresa" : "Nome do parceiro"}
+              readOnly={apiReadonly}
+              className={apiReadonly ? "bg-muted cursor-not-allowed" : ""}
+            />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
 
+          {/* E-mail (apenas criação) */}
           {isCreate && (
             <div className="space-y-2">
               <Label htmlFor="email">E-mail *</Label>
@@ -238,50 +277,26 @@ export function PartnerForm(props: PartnerFormProps) {
           )}
         </div>
 
+        {/* Senha (apenas criação) */}
         {isCreate && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="password">Senha de acesso *</Label>
-              <Input id="password" type="password" {...register("password")} placeholder="Mínimo 8 caracteres" />
-              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+              <Input
+                id="password"
+                type="password"
+                {...register("password")}
+                placeholder="Mínimo 8 caracteres"
+              />
+              {errors.password && (
+                <p className="text-xs text-destructive">{errors.password.message}</p>
+              )}
             </div>
           </div>
         )}
-      </div>
-
-      {/* Tipo de pessoa + Documento */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Contato e documento
-        </h3>
-
-        {/* Tipo de pessoa */}
-        <div className="space-y-2">
-          <Label>Tipo de pessoa</Label>
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                {...register("person_type")}
-                value="PF"
-                className="h-4 w-4 accent-primary"
-              />
-              <span className="text-sm">Pessoa Física</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                {...register("person_type")}
-                value="PJ"
-                className="h-4 w-4 accent-primary"
-              />
-              <span className="text-sm">Pessoa Jurídica</span>
-            </label>
-          </div>
-        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {/* Telefone com máscara */}
+          {/* Telefone */}
           <div className="space-y-2">
             <Label htmlFor="phone">Telefone</Label>
             <Input
@@ -294,21 +309,9 @@ export function PartnerForm(props: PartnerFormProps) {
             />
           </div>
 
-          {/* CPF ou CNPJ com máscara e auto-fill */}
+          {/* CPF ou CNPJ */}
           <div className="space-y-2">
-            {personType === "PF" ? (
-              <>
-                <Label htmlFor="cpf_cnpj">CPF</Label>
-                <Input
-                  id="cpf_cnpj"
-                  {...register("cpf_cnpj")}
-                  placeholder="000.000.000-00"
-                  onChange={(e) =>
-                    setValue("cpf_cnpj", maskCPF(e.target.value), { shouldValidate: true })
-                  }
-                />
-              </>
-            ) : (
+            {isPJ ? (
               <>
                 <Label htmlFor="cpf_cnpj">
                   CNPJ{" "}
@@ -323,6 +326,18 @@ export function PartnerForm(props: PartnerFormProps) {
                   onChange={(e) => handleCnpjChange(e.target.value)}
                 />
               </>
+            ) : (
+              <>
+                <Label htmlFor="cpf_cnpj">CPF</Label>
+                <Input
+                  id="cpf_cnpj"
+                  {...register("cpf_cnpj")}
+                  placeholder="000.000.000-00"
+                  onChange={(e) =>
+                    setValue("cpf_cnpj", maskCPF(e.target.value), { shouldValidate: true })
+                  }
+                />
+              </>
             )}
             {errors.cpf_cnpj && (
               <p className="text-xs text-destructive">{errors.cpf_cnpj.message}</p>
@@ -331,60 +346,101 @@ export function PartnerForm(props: PartnerFormProps) {
         </div>
       </div>
 
-      {/* Endereço */}
+      {/* ── ENDEREÇO ───────────────────────────────────────────────────── */}
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           Endereço
         </h3>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* CEP */}
           <div className="space-y-2">
             <Label htmlFor="address_cep">
-              CEP *{" "}
-              <span className="text-xs text-muted-foreground font-normal">
-                (preenche endereço automaticamente)
-              </span>
+              CEP {!isPJ && "*"}{" "}
+              {apiReadonly ? (
+                <span className="text-xs text-muted-foreground font-normal">(preenchido pela API)</span>
+              ) : !isPJ ? (
+                <span className="text-xs text-muted-foreground font-normal">(preenche endereço automaticamente)</span>
+              ) : null}
             </Label>
             <Input
               id="address_cep"
               {...register("address_cep")}
               placeholder="00000-000"
-              onChange={(e) => handleCepChange(e.target.value)}
+              readOnly={apiReadonly}
+              className={apiReadonly ? "bg-muted cursor-not-allowed" : ""}
+              onChange={(e) => {
+                if (!apiReadonly) handleCepChange(e.target.value);
+              }}
             />
             {errors.address_cep && (
               <p className="text-xs text-destructive">{errors.address_cep.message}</p>
             )}
           </div>
 
+          {/* Logradouro */}
           <div className="sm:col-span-2 space-y-2">
             <Label htmlFor="address_street">Logradouro</Label>
-            <Input id="address_street" {...register("address_street")} placeholder="Rua, Avenida..." />
+            <Input
+              id="address_street"
+              {...register("address_street")}
+              placeholder="Rua, Avenida..."
+              readOnly={apiReadonly}
+              className={apiReadonly ? "bg-muted cursor-not-allowed" : ""}
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* Número */}
           <div className="space-y-2">
             <Label htmlFor="address_number">Número</Label>
-            <Input id="address_number" {...register("address_number")} placeholder="123" />
+            <Input
+              id="address_number"
+              {...register("address_number")}
+              placeholder="123"
+              readOnly={apiReadonly}
+              className={apiReadonly ? "bg-muted cursor-not-allowed" : ""}
+            />
           </div>
 
+          {/* Complemento — sempre editável */}
           <div className="sm:col-span-2 space-y-2">
             <Label htmlFor="address_complement">Complemento</Label>
-            <Input id="address_complement" {...register("address_complement")} placeholder="Apto, Sala..." />
+            <Input
+              id="address_complement"
+              {...register("address_complement")}
+              placeholder="Apto, Sala..."
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* Bairro */}
           <div className="space-y-2">
             <Label htmlFor="address_neighborhood">Bairro</Label>
-            <Input id="address_neighborhood" {...register("address_neighborhood")} placeholder="Bairro" />
+            <Input
+              id="address_neighborhood"
+              {...register("address_neighborhood")}
+              placeholder="Bairro"
+              readOnly={apiReadonly}
+              className={apiReadonly ? "bg-muted cursor-not-allowed" : ""}
+            />
           </div>
 
+          {/* Cidade */}
           <div className="space-y-2">
             <Label htmlFor="address_city">Cidade</Label>
-            <Input id="address_city" {...register("address_city")} placeholder="Cidade" />
+            <Input
+              id="address_city"
+              {...register("address_city")}
+              placeholder="Cidade"
+              readOnly={apiReadonly}
+              className={apiReadonly ? "bg-muted cursor-not-allowed" : ""}
+            />
           </div>
 
+          {/* UF */}
           <div className="space-y-2">
             <Label htmlFor="address_state">UF</Label>
             <Input
@@ -392,22 +448,62 @@ export function PartnerForm(props: PartnerFormProps) {
               {...register("address_state")}
               placeholder="PR"
               maxLength={2}
-              className="uppercase"
+              readOnly={apiReadonly}
+              className={`uppercase${apiReadonly ? " bg-muted cursor-not-allowed" : ""}`}
             />
           </div>
         </div>
       </div>
 
-      {/* Observações */}
-      <div className="space-y-2">
-        <Label htmlFor="notes">Observações</Label>
-        <textarea
-          id="notes"
-          {...register("notes")}
-          placeholder="Anotações internas sobre o parceiro..."
-          rows={3}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-        />
+      {/* ── DETALHES ───────────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          Detalhes
+        </h3>
+
+        {/* Tipo de pessoa */}
+        <div className="space-y-2">
+          <Label>Tipo de pessoa</Label>
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                value="PF"
+                checked={personType === "PF"}
+                onChange={() => handlePersonTypeChange("PF")}
+                className="h-4 w-4 accent-primary"
+              />
+              <span className="text-sm">Pessoa Física</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                value="PJ"
+                checked={personType === "PJ"}
+                onChange={() => handlePersonTypeChange("PJ")}
+                className="h-4 w-4 accent-primary"
+              />
+              <span className="text-sm">Pessoa Jurídica</span>
+            </label>
+          </div>
+          {apiReadonly && (
+            <p className="text-xs text-muted-foreground">
+              Os campos preenchidos automaticamente via CNPJ não podem ser editados.
+            </p>
+          )}
+        </div>
+
+        {/* Observações */}
+        <div className="space-y-2">
+          <Label htmlFor="notes">Observações</Label>
+          <textarea
+            id="notes"
+            {...register("notes")}
+            placeholder="Anotações internas sobre o parceiro..."
+            rows={3}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+          />
+        </div>
       </div>
 
       {props.apiError && (
