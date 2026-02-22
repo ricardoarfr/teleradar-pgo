@@ -2,8 +2,9 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
+import bcrypt
+
 from fastapi import HTTPException
-from passlib.context import CryptContext
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -13,7 +14,7 @@ from app.modules.partners.models import PartnerProfile
 from app.modules.partners.schemas import PartnerCreate, PartnerUpdate
 
 logger = logging.getLogger(__name__)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
+_BCRYPT_ROUNDS = 12
 
 
 async def create_partner(db: AsyncSession, data: PartnerCreate, admin: User) -> User:
@@ -30,7 +31,7 @@ async def create_partner(db: AsyncSession, data: PartnerCreate, admin: User) -> 
     user = User(
         name=data.name,
         email=data.email,
-        password_hash=pwd_context.hash(data.password),
+        password_hash=bcrypt.hashpw(data.password.encode(), bcrypt.gensalt(rounds=_BCRYPT_ROUNDS)).decode(),
         role=UserRole.PARTNER,
         status=UserStatus.APPROVED,
         tenant_id=data.tenant_id,
