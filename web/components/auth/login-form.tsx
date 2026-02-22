@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { Eye, EyeOff, Radio } from "lucide-react";
+import Link from "next/link";
 
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -105,6 +106,13 @@ export function LoginForm() {
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Entrando..." : "Entrar"}
           </Button>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Não tem conta?{" "}
+            <Link href="/register" className="text-primary hover:underline font-medium">
+              Cadastre-se
+            </Link>
+          </p>
         </form>
       </CardContent>
     </Card>
