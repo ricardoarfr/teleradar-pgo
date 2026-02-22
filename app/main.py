@@ -51,6 +51,7 @@ from app.modules.projects.router import router as projects_router
 from app.modules.materials.router import router as materials_router
 from app.modules.payments.router import router as payments_router
 from app.modules.reports.router import router as reports_router
+from app.modules.clients.router import router as clients_router
 
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
@@ -62,6 +63,7 @@ app.include_router(projects_router, prefix="/modules/projects", tags=["Módulo: 
 app.include_router(materials_router, prefix="/modules/materials", tags=["Módulo: Materiais"])
 app.include_router(payments_router, prefix="/modules/payments", tags=["Módulo: Pagamentos"])
 app.include_router(reports_router, prefix="/modules/reports", tags=["Módulo: Relatórios"])
+app.include_router(clients_router, prefix="/admin/clients", tags=["Clientes"])
 
 
 @app.get("/health", tags=["Health"])
