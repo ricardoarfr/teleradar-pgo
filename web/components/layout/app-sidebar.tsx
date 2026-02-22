@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Radio, UserCheck } from "lucide-react";
+import { Users, Radio, UserCheck, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -10,6 +10,11 @@ const navItems = [
     label: "Parceiros",
     href: "/partners",
     icon: UserCheck,
+  },
+  {
+    label: "Empresas",
+    href: "/companies",
+    icon: Building2,
   },
   {
     label: "Usuários",

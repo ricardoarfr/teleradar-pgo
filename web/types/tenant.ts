@@ -14,3 +14,12 @@ export interface TenantListResponse {
   page: number;
   per_page: number;
 }
+
+export interface TenantCreate {
+  name: string;
+}
+
+export interface TenantUpdate {
+  name?: string;
+  status?: TenantStatus;
+}
