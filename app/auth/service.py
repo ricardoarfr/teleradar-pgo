@@ -92,7 +92,7 @@ async def login_user(db: AsyncSession, data: UserLogin, request: Request) -> dic
     if not verify_password(data.password, user.password_hash):
         user.login_attempts += 1
         if user.login_attempts >= settings.MAX_LOGIN_ATTEMPTS:
-            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.LOCK_DURATION_MINUTES)
+            user.locked_until = datetime.utcnow() + timedelta(minutes=settings.LOCK_DURATION_MINUTES)
             await _log(db, "ACCOUNT_LOCKED", user.id, request)
         await db.commit()
         raise HTTPException(status_code=401, detail="Credenciais inválidas")

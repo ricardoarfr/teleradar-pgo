@@ -64,7 +64,7 @@ async def initiate_approval(db: AsyncSession, user_id: UUID, admin: User) -> Non
         user_id=user.id,
         type=TokenType.APPROVAL_CODE,
         token=f"approval:{user_id}:{code}",
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
     ))
     await db.commit()
 
