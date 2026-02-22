@@ -23,7 +23,7 @@ export function formatRole(role: UserRole): string {
     ADMIN: "Administrador",
     MANAGER: "Gerente",
     STAFF: "Colaborador",
-    CLIENT: "Cliente",
+    PARTNER: "Parceiro",
   };
   return labels[role] ?? role;
 }
