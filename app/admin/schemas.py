@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime
 from typing import Optional, List
@@ -44,3 +44,11 @@ class ChangeRoleRequest(BaseModel):
 
 class BlockRequest(BaseModel):
     reason: Optional[str] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class ChangeTenantRequest(BaseModel):
+    tenant_id: Optional[UUID] = None

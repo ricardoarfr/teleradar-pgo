@@ -7,6 +7,8 @@ import type {
   ConfirmApprovalRequest,
   ChangeRoleRequest,
   BlockRequest,
+  ChangePasswordRequest,
+  ChangeTenantRequest,
 } from "@/types/user";
 
 export function useUsers(params: ListUsersParams = {}) {
@@ -82,6 +84,29 @@ export function useChangeRole() {
     mutationFn: ({ userId, data }: { userId: string; data: ChangeRoleRequest }) =>
       apiPut<User>(`/admin/users/${userId}/role`, data),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+}
+
+export function useChangeUserPassword() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, data }: { userId: string; data: ChangePasswordRequest }) =>
+      apiPut<User>(`/admin/users/${userId}/password`, data),
+    onSuccess: (_data, { userId }) => {
+      qc.invalidateQueries({ queryKey: ["users", userId] });
+    },
+  });
+}
+
+export function useChangeUserTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, data }: { userId: string; data: ChangeTenantRequest }) =>
+      apiPut<User>(`/admin/users/${userId}/tenant`, data),
+    onSuccess: (_data, { userId }) => {
+      qc.invalidateQueries({ queryKey: ["users", userId] });
       qc.invalidateQueries({ queryKey: ["users"] });
     },
   });

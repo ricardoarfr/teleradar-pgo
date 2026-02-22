@@ -41,3 +41,11 @@ export interface ChangeRoleRequest {
 export interface BlockRequest {
   reason?: string;
 }
+
+export interface ChangePasswordRequest {
+  new_password: string;
+}
+
+export interface ChangeTenantRequest {
+  tenant_id: string | null;
+}
