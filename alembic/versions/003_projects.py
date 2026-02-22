@@ -17,23 +17,27 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    project_status = postgresql.ENUM("PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", name="projectstatus")
-    project_status.create(op.get_bind())
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing = inspector.get_table_names()
 
-    op.create_table(
-        "projects",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("tenant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("status", sa.Enum("PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", name="projectstatus"), nullable=False),
-        sa.Column("responsible_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("start_date", sa.Date(), nullable=True),
-        sa.Column("end_date", sa.Date(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=False),
-    )
-    op.create_index("ix_projects_tenant_id", "projects", ["tenant_id"])
+    postgresql.ENUM("PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", name="projectstatus").create(bind, checkfirst=True)
+
+    if "projects" not in existing:
+        op.create_table(
+            "projects",
+            sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+            sa.Column("tenant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("name", sa.String(255), nullable=False),
+            sa.Column("description", sa.Text(), nullable=True),
+            sa.Column("status", sa.Enum("PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", name="projectstatus", create_type=False), nullable=False),
+            sa.Column("responsible_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+            sa.Column("start_date", sa.Date(), nullable=True),
+            sa.Column("end_date", sa.Date(), nullable=True),
+            sa.Column("created_at", sa.DateTime(), nullable=False),
+            sa.Column("updated_at", sa.DateTime(), nullable=False),
+        )
+        op.create_index("ix_projects_tenant_id", "projects", ["tenant_id"])
 
 
 def downgrade() -> None:
