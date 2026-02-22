@@ -93,6 +93,45 @@ export async function getMeAction(): Promise<AuthUser | null> {
   return fetchMe(accessToken);
 }
 
+export async function forgotPasswordAction(
+  email: string
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return { success: false, error: body?.detail ?? "Erro ao processar solicitação." };
+    }
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao conectar com o servidor." };
+  }
+}
+
+export async function resetPasswordAction(
+  token: string,
+  new_password: string
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    const res = await fetch(`${API_URL}/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, new_password }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return { success: false, error: body?.detail ?? "Token inválido ou expirado." };
+    }
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao conectar com o servidor." };
+  }
+}
+
 async function fetchMe(accessToken: string): Promise<AuthUser | null> {
   try {
     const res = await fetch(`${API_URL}/auth/me`, {
