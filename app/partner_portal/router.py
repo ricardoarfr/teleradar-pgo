@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth.dependencies import get_current_user
 from app.auth.models import User, UserRole
-from app.client_portal.schemas import PartnerOverview, PartnerProfile
+from app.partner_portal.schemas import PartnerOverview, PartnerProfile
 from app.utils.responses import success
 
 router = APIRouter()

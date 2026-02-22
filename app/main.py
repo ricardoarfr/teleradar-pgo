@@ -45,7 +45,7 @@ from app.auth.router import router as auth_router
 from app.admin.router import router as admin_router
 from app.users.router import router as users_router
 from app.tenants.router import router as tenants_router
-from app.client_portal.router import router as client_portal_router
+from app.partner_portal.router import router as partner_portal_router
 from app.modules.contracts.router import router as contracts_router
 from app.modules.projects.router import router as projects_router
 from app.modules.materials.router import router as materials_router
@@ -57,7 +57,7 @@ app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 app.include_router(users_router, prefix="/users", tags=["Users"])
 app.include_router(tenants_router, prefix="/tenants", tags=["Tenants"])
-app.include_router(client_portal_router, prefix="/client", tags=["Portal do Cliente"])
+app.include_router(partner_portal_router, prefix="/partner", tags=["Portal do Parceiro"])
 app.include_router(contracts_router, prefix="/modules/contracts", tags=["Módulo: Contratos"])
 app.include_router(projects_router, prefix="/modules/projects", tags=["Módulo: Projetos"])
 app.include_router(materials_router, prefix="/modules/materials", tags=["Módulo: Materiais"])
