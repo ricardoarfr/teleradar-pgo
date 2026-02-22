@@ -54,7 +54,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, ModulePermission[]> = {
     { module: "materials", actions: ["read"] },
     { module: "reports", actions: ["read"] },
   ],
-  CLIENT: [
+  PARTNER: [
     { module: "client_portal", actions: ["read"] },
   ],
 };
