@@ -1,16 +1,28 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { UserStatusBadge } from "@/components/users/user-status-badge";
 import { UserRoleBadge } from "@/components/users/user-role-badge";
 import { UserActions } from "@/components/users/user-actions";
-import { useUser } from "@/hooks/use-users";
+import { useUser, useChangeUserPassword, useChangeUserTenant } from "@/hooks/use-users";
+import { useListTenants } from "@/hooks/use-tenants";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate } from "@/lib/utils";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -20,6 +32,55 @@ export default function UserDetailPage({ params }: PageProps) {
   const { id } = use(params);
   const { data: user, isLoading, error } = useUser(id);
   const { user: currentUser } = useAuth();
+  const { data: tenantsData } = useListTenants();
+  const tenants = tenantsData?.results ?? [];
+
+  const changePassword = useChangeUserPassword();
+  const changeTenant = useChangeUserTenant();
+
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [selectedTenant, setSelectedTenant] = useState<string | undefined>(undefined);
+
+  const isAdminOrMaster =
+    currentUser?.role === "MASTER" || currentUser?.role === "ADMIN";
+
+  // Initialize tenant select once user is loaded
+  const tenantValue =
+    selectedTenant !== undefined
+      ? selectedTenant
+      : (user?.tenant_id ?? "NONE");
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      setPasswordError("A senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+    setPasswordError(null);
+    try {
+      await changePassword.mutateAsync({ userId: id, data: { new_password: newPassword } });
+      setNewPassword("");
+      toast({ title: "Senha alterada!", description: "A nova senha foi salva com sucesso." });
+    } catch (err: any) {
+      setPasswordError(err?.response?.data?.detail ?? "Erro ao alterar senha.");
+    }
+  };
+
+  const handleTenantSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const tenantId = tenantValue === "NONE" ? null : tenantValue;
+    try {
+      await changeTenant.mutateAsync({ userId: id, data: { tenant_id: tenantId } });
+      toast({ title: "Empresa vinculada!", description: "O vínculo foi atualizado com sucesso." });
+    } catch (err: any) {
+      toast({
+        title: "Erro",
+        description: err?.response?.data?.detail ?? "Erro ao vincular empresa.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -102,23 +163,94 @@ export default function UserDetailPage({ params }: PageProps) {
           </div>
 
           <div className="text-sm">
-            <p className="text-xs text-muted-foreground mb-1">Tenant</p>
-            <p>{user.tenant_id ?? "—"}</p>
+            <p className="text-xs text-muted-foreground mb-1">Empresa</p>
+            <p>
+              {user.tenant_id
+                ? (tenants.find((t) => t.id === user.tenant_id)?.name ?? user.tenant_id)
+                : "—"}
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Ações */}
-      {currentUser && (currentUser.role === "MASTER" || currentUser.role === "ADMIN") && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Ações</CardTitle>
-            <CardDescription>Gerencie o acesso deste usuário.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <UserActions user={user} currentUserRole={currentUser.role} />
-          </CardContent>
-        </Card>
+      {isAdminOrMaster && currentUser && (
+        <>
+          {/* Vincular empresa */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Empresa</CardTitle>
+              <CardDescription>Vincule este usuário a uma empresa.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleTenantSubmit} className="flex items-end gap-3">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="tenant">Empresa</Label>
+                  <Select
+                    value={tenantValue}
+                    onValueChange={(v) => setSelectedTenant(v)}
+                  >
+                    <SelectTrigger id="tenant">
+                      <SelectValue placeholder="Selecione uma empresa..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">Nenhuma</SelectItem>
+                      {tenants.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="submit" disabled={changeTenant.isPending}>
+                  {changeTenant.isPending ? "Salvando..." : "Salvar"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Alterar senha */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Alterar senha</CardTitle>
+              <CardDescription>
+                Define uma nova senha para este usuário. Mínimo 8 caracteres.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordSubmit} className="flex items-end gap-3">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="new-password">Nova senha</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                  />
+                  {passwordError && (
+                    <p className="text-xs text-destructive">{passwordError}</p>
+                  )}
+                </div>
+                <Button type="submit" disabled={changePassword.isPending}>
+                  {changePassword.isPending ? "Salvando..." : "Alterar"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Ações (bloquear, aprovar, etc.) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Ações</CardTitle>
+              <CardDescription>Gerencie o acesso deste usuário.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UserActions user={user} currentUserRole={currentUser.role} />
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );

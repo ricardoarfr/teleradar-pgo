@@ -88,3 +88,25 @@ async def change_role(
 ):
     user = await service.change_user_role(db, user_id, data.role, admin)
     return success("Role atualizado.", schemas.UserDetail.model_validate(user))
+
+
+@router.put("/users/{user_id}/password")
+async def change_password(
+    user_id: UUID,
+    data: schemas.ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(_admin_or_master),
+):
+    user = await service.change_user_password(db, user_id, data.new_password, admin)
+    return success("Senha atualizada.", schemas.UserDetail.model_validate(user))
+
+
+@router.put("/users/{user_id}/tenant")
+async def change_tenant(
+    user_id: UUID,
+    data: schemas.ChangeTenantRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(_admin_or_master),
+):
+    user = await service.change_user_tenant(db, user_id, data.tenant_id, admin)
+    return success("Empresa vinculada.", schemas.UserDetail.model_validate(user))

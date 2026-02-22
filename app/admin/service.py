@@ -9,7 +9,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import AuditLog, Token, TokenType, User, UserRole, UserStatus
+from app.auth.service import hash_password
 from app.config.settings import settings
+from app.tenants.models import Tenant
 from app.utils.email import send_account_approved, send_approval_code
 
 logger = logging.getLogger(__name__)
@@ -140,6 +142,40 @@ async def change_user_role(db: AsyncSession, user_id: UUID, new_role: UserRole, 
     user.role = new_role
     user.updated_at = datetime.utcnow()
     db.add(AuditLog(user_id=admin.id, action="CHANGE_ROLE", details={"target": str(user_id), "new_role": new_role.value}))
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def change_user_password(db: AsyncSession, user_id: UUID, new_password: str, admin: User) -> User:
+    user = await get_user_by_id(db, user_id)
+    if user.role == UserRole.MASTER and admin.role != UserRole.MASTER:
+        raise HTTPException(status_code=403, detail="Apenas MASTER pode alterar a senha de outro MASTER")
+
+    user.password_hash = hash_password(new_password)
+    user.updated_at = datetime.utcnow()
+    db.add(AuditLog(user_id=admin.id, action="CHANGE_PASSWORD", details={"target": str(user_id)}))
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def change_user_tenant(db: AsyncSession, user_id: UUID, tenant_id: UUID | None, admin: User) -> User:
+    user = await get_user_by_id(db, user_id)
+
+    if tenant_id is not None:
+        result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+        tenant = result.scalar_one_or_none()
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Empresa não encontrada")
+
+    user.tenant_id = tenant_id
+    user.updated_at = datetime.utcnow()
+    db.add(AuditLog(
+        user_id=admin.id,
+        action="CHANGE_TENANT",
+        details={"target": str(user_id), "tenant_id": str(tenant_id) if tenant_id else None},
+    ))
     await db.commit()
     await db.refresh(user)
     return user
