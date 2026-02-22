@@ -1,4 +1,4 @@
-export type UserRole = "MASTER" | "ADMIN" | "MANAGER" | "STAFF" | "CLIENT";
+export type UserRole = "MASTER" | "ADMIN" | "MANAGER" | "STAFF" | "PARTNER";
 export type UserStatus = "PENDING" | "APPROVED" | "BLOCKED";
 
 export interface User {

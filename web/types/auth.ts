@@ -28,5 +28,5 @@ export interface AuthUser {
   updated_at: string;
 }
 
-export type UserRole = "MASTER" | "ADMIN" | "MANAGER" | "STAFF" | "CLIENT";
+export type UserRole = "MASTER" | "ADMIN" | "MANAGER" | "STAFF" | "PARTNER";
 export type UserStatus = "PENDING" | "APPROVED" | "BLOCKED";
