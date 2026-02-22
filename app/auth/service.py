@@ -117,7 +117,7 @@ async def login_user(db: AsyncSession, data: UserLogin, request: Request) -> dic
         user_id=user.id,
         type=TokenType.REFRESH,
         token=refresh_token_str,
-        expires_at=now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     ))
     await _log(db, "LOGIN", user.id, request)
     await db.commit()
@@ -161,7 +161,7 @@ async def refresh_tokens(db: AsyncSession, refresh_token_str: str) -> dict:
         user_id=user.id,
         type=TokenType.REFRESH,
         token=new_refresh,
-        expires_at=now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     ))
     await db.commit()
     return {"access_token": new_access, "refresh_token": new_refresh, "token_type": "bearer"}
@@ -187,7 +187,7 @@ async def forgot_password(db: AsyncSession, email: str) -> None:
         user_id=user.id,
         type=TokenType.RESET_PASSWORD,
         token=reset_token,
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
     ))
     await db.commit()
 
