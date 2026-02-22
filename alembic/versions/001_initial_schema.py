@@ -16,8 +16,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Enums — IF NOT EXISTS garante idempotência independente do driver
-    op.execute("CREATE TYPE IF NOT EXISTS tenantstatus AS ENUM ('ACTIVE', 'INACTIVE')")
-    op.execute("CREATE TYPE IF NOT EXISTS userrole AS ENUM ('MASTER', 'ADMIN', 'MANAGER', 'STAFF', 'CLIENT')")
+op.execute("""
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tenantstatus') THEN
+        CREATE TYPE tenantstatus AS ENUM ('ACTIVE', 'INACTIVE');
+    END IF;
+END
+$$;
+""")    op.execute("CREATE TYPE IF NOT EXISTS userrole AS ENUM ('MASTER', 'ADMIN', 'MANAGER', 'STAFF', 'CLIENT')")
     op.execute("CREATE TYPE IF NOT EXISTS userstatus AS ENUM ('PENDING', 'APPROVED', 'BLOCKED')")
     op.execute("CREATE TYPE IF NOT EXISTS tokentype AS ENUM ('RESET_PASSWORD', 'APPROVAL_CODE', 'REFRESH')")
 
