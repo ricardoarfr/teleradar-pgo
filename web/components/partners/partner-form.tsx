@@ -248,6 +248,33 @@ export function PartnerForm(props: PartnerFormProps) {
           Dados
         </h3>
 
+        {/* Tipo de pessoa */}
+        <div className="space-y-2">
+          <Label>Tipo de pessoa</Label>
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                value="PF"
+                checked={personType === "PF"}
+                onChange={() => handlePersonTypeChange("PF")}
+                className="h-4 w-4 accent-primary"
+              />
+              <span className="text-sm">Pessoa Física</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                value="PJ"
+                checked={personType === "PJ"}
+                onChange={() => handlePersonTypeChange("PJ")}
+                className="h-4 w-4 accent-primary"
+              />
+              <span className="text-sm">Pessoa Jurídica</span>
+            </label>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Nome */}
           <div className="space-y-2">
@@ -461,37 +488,11 @@ export function PartnerForm(props: PartnerFormProps) {
           Detalhes
         </h3>
 
-        {/* Tipo de pessoa */}
-        <div className="space-y-2">
-          <Label>Tipo de pessoa</Label>
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                value="PF"
-                checked={personType === "PF"}
-                onChange={() => handlePersonTypeChange("PF")}
-                className="h-4 w-4 accent-primary"
-              />
-              <span className="text-sm">Pessoa Física</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                value="PJ"
-                checked={personType === "PJ"}
-                onChange={() => handlePersonTypeChange("PJ")}
-                className="h-4 w-4 accent-primary"
-              />
-              <span className="text-sm">Pessoa Jurídica</span>
-            </label>
-          </div>
-          {apiReadonly && (
-            <p className="text-xs text-muted-foreground">
-              Os campos preenchidos automaticamente via CNPJ não podem ser editados.
-            </p>
-          )}
-        </div>
+        {apiReadonly && (
+          <p className="text-xs text-muted-foreground">
+            Os campos preenchidos automaticamente via CNPJ não podem ser editados.
+          </p>
+        )}
 
         {/* Observações */}
         <div className="space-y-2">
