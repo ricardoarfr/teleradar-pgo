@@ -2,6 +2,7 @@ services:
   - type: web
     name: teleradar-pgo-web
     env: node
+    plan: free
     rootDir: web
     buildCommand: npm install && npm run build
     startCommand: npm start
