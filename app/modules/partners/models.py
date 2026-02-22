@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, String, DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 
 from app.database.base import Base
 
@@ -30,5 +30,5 @@ class PartnerProfile(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    user = relationship("User", backref="partner_profile", uselist=False)
+    user = relationship("User", backref=backref("partner_profile", uselist=False), uselist=False)
     tenant = relationship("Tenant", backref="partner_profiles")
