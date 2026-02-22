@@ -18,6 +18,9 @@ export async function loginAction(
     });
 
     if (!res.ok) {
+      if (res.status >= 500) {
+        return { success: false, error: "Servidor temporariamente indisponível. Aguarde alguns segundos e tente novamente." };
+      }
       const body = await res.json().catch(() => ({}));
       const message = body?.detail ?? "Credenciais inválidas.";
       return { success: false, error: message };
