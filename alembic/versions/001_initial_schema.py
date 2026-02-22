@@ -14,10 +14,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # =========================
-    # ENUMS seguros
-    # =========================
-
     op.execute("""
     DO $$
     BEGIN
@@ -54,10 +50,6 @@ def upgrade() -> None:
     END$$;
     """)
 
-    # =========================
-    # TABELAS
-    # =========================
-
     op.execute("""
         CREATE TABLE IF NOT EXISTS tenants (
             id UUID PRIMARY KEY,
@@ -85,7 +77,6 @@ def upgrade() -> None:
             updated_at TIMESTAMP NOT NULL
         )
     """)
-
     op.execute("CREATE INDEX IF NOT EXISTS ix_users_email ON users (email)")
 
     op.execute("""
@@ -99,7 +90,6 @@ def upgrade() -> None:
             created_at TIMESTAMP NOT NULL
         )
     """)
-
     op.execute("CREATE INDEX IF NOT EXISTS ix_tokens_token ON tokens (token)")
 
     op.execute("""
@@ -113,7 +103,6 @@ def upgrade() -> None:
             created_at TIMESTAMP NOT NULL
         )
     """)
-
     op.execute("CREATE INDEX IF NOT EXISTS ix_audit_logs_action ON audit_logs (action)")
 
     op.execute("""
@@ -125,7 +114,6 @@ def upgrade() -> None:
             created_at TIMESTAMP NOT NULL
         )
     """)
-
     op.execute("CREATE INDEX IF NOT EXISTS ix_permissions_name ON permissions (name)")
 
     op.execute("""
@@ -144,7 +132,6 @@ def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS tokens")
     op.execute("DROP TABLE IF EXISTS users")
     op.execute("DROP TABLE IF EXISTS tenants")
-
     op.execute("DROP TYPE IF EXISTS tokentype")
     op.execute("DROP TYPE IF EXISTS userstatus")
     op.execute("DROP TYPE IF EXISTS userrole")

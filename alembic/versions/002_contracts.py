@@ -15,7 +15,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE TYPE IF NOT EXISTS contractstatus AS ENUM ('ACTIVE', 'SUSPENDED', 'CANCELLED')")
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'contractstatus') THEN
+                CREATE TYPE contractstatus AS ENUM ('ACTIVE', 'SUSPENDED', 'CANCELLED');
+            END IF;
+        END$$;
+    """)
 
     op.execute("""
         CREATE TABLE IF NOT EXISTS contracts (
