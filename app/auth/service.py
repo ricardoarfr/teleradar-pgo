@@ -41,7 +41,7 @@ async def _log(
     log = AuditLog(
         user_id=user_id,
         action=action,
-        ip=request.client.host if request else None,
+        ip=request.client.host if request and request.client else None,
         user_agent=request.headers.get("user-agent") if request else None,
         details=details,
     )
