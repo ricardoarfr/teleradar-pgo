@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   {
-    label: "Clientes",
-    href: "/clients",
+    label: "Parceiros",
+    href: "/partners",
     icon: UserCheck,
   },
   {

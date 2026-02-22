@@ -13,38 +13,38 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserStatusBadge } from "@/components/users/user-status-badge";
-import { ClientForm } from "@/components/clients/client-form";
-import { useClient, useUpdateClient, useBlockClient, useUnblockClient } from "@/hooks/use-clients";
+import { PartnerForm } from "@/components/partners/partner-form";
+import { usePartner, useUpdatePartner, useBlockPartner, useUnblockPartner } from "@/hooks/use-partners";
 import { toast } from "@/components/ui/use-toast";
 import { formatDate } from "@/lib/utils";
-import type { ClientUpdate } from "@/types/client";
+import type { PartnerUpdate } from "@/types/partner";
 
-export default function ClientDetailPage() {
+export default function PartnerDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
 
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const { data: client, isLoading } = useClient(id);
-  const updateClient = useUpdateClient();
-  const blockClient = useBlockClient();
-  const unblockClient = useUnblockClient();
+  const { data: partner, isLoading } = usePartner(id);
+  const updatePartner = useUpdatePartner();
+  const blockPartner = useBlockPartner();
+  const unblockPartner = useUnblockPartner();
 
-  const handleUpdate = async (data: ClientUpdate) => {
+  const handleUpdate = async (data: PartnerUpdate) => {
     setApiError(null);
     try {
-      await updateClient.mutateAsync({ id, data });
-      toast({ title: "Cliente atualizado!", description: "As informações foram salvas." });
+      await updatePartner.mutateAsync({ id, data });
+      toast({ title: "Parceiro atualizado!", description: "As informações foram salvas." });
     } catch (err: any) {
-      setApiError(err?.response?.data?.detail ?? "Erro ao atualizar cliente.");
+      setApiError(err?.response?.data?.detail ?? "Erro ao atualizar parceiro.");
     }
   };
 
   const handleBlock = async () => {
     try {
-      await blockClient.mutateAsync(id);
-      toast({ title: "Cliente bloqueado." });
+      await blockPartner.mutateAsync(id);
+      toast({ title: "Parceiro bloqueado." });
     } catch (err: any) {
       toast({
         title: "Erro",
@@ -56,8 +56,8 @@ export default function ClientDetailPage() {
 
   const handleUnblock = async () => {
     try {
-      await unblockClient.mutateAsync(id);
-      toast({ title: "Cliente desbloqueado." });
+      await unblockPartner.mutateAsync(id);
+      toast({ title: "Parceiro desbloqueado." });
     } catch (err: any) {
       toast({
         title: "Erro",
@@ -75,38 +75,38 @@ export default function ClientDetailPage() {
     );
   }
 
-  if (!client) {
+  if (!partner) {
     return (
       <div className="space-y-4">
-        <Link href="/clients" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/partners" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
-          Voltar para clientes
+          Voltar para parceiros
         </Link>
-        <p className="text-sm text-muted-foreground">Cliente não encontrado.</p>
+        <p className="text-sm text-muted-foreground">Parceiro não encontrado.</p>
       </div>
     );
   }
 
-  const isBlocked = client.status === "BLOCKED";
+  const isBlocked = partner.status === "BLOCKED";
 
   return (
     <div className="max-w-2xl space-y-6">
       <div className="mb-2">
-        <Link href="/clients" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/partners" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
-          Voltar para clientes
+          Voltar para parceiros
         </Link>
       </div>
 
-      {/* Header do cliente */}
+      {/* Header do parceiro */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{client.name}</h1>
-          <p className="text-muted-foreground text-sm">{client.email}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{partner.name}</h1>
+          <p className="text-muted-foreground text-sm">{partner.email}</p>
           <div className="mt-2 flex items-center gap-2">
-            <UserStatusBadge status={client.status} />
+            <UserStatusBadge status={partner.status} />
             <span className="text-xs text-muted-foreground">
-              Cadastrado em {formatDate(client.created_at)}
+              Cadastrado em {formatDate(partner.created_at)}
             </span>
           </div>
         </div>
@@ -117,7 +117,7 @@ export default function ClientDetailPage() {
               variant="outline"
               size="sm"
               onClick={handleUnblock}
-              disabled={unblockClient.isPending}
+              disabled={unblockPartner.isPending}
             >
               <ShieldCheck className="h-4 w-4" />
               Desbloquear
@@ -127,7 +127,7 @@ export default function ClientDetailPage() {
               variant="outline"
               size="sm"
               onClick={handleBlock}
-              disabled={blockClient.isPending}
+              disabled={blockPartner.isPending}
               className="text-destructive border-destructive hover:bg-destructive/10"
             >
               <ShieldBan className="h-4 w-4" />
@@ -140,17 +140,17 @@ export default function ClientDetailPage() {
       {/* Formulário de edição */}
       <Card>
         <CardHeader>
-          <CardTitle>Informações do cliente</CardTitle>
-          <CardDescription>Edite os dados cadastrais do cliente.</CardDescription>
+          <CardTitle>Informações do parceiro</CardTitle>
+          <CardDescription>Edite os dados cadastrais do parceiro.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ClientForm
+          <PartnerForm
             mode="edit"
-            client={client}
+            partner={partner}
             onSubmit={handleUpdate}
-            isSubmitting={updateClient.isPending}
+            isSubmitting={updatePartner.isPending}
             apiError={apiError}
-            onCancel={() => router.push("/clients")}
+            onCancel={() => router.push("/partners")}
           />
         </CardContent>
       </Card>

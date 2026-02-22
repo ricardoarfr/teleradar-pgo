@@ -6,7 +6,7 @@ from typing import Optional
 from app.auth.models import UserRole, UserStatus
 
 
-class ClientProfile(BaseModel):
+class PartnerProfile(BaseModel):
     id: UUID
     name: str
     email: str
@@ -18,6 +18,6 @@ class ClientProfile(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ClientOverview(BaseModel):
+class PartnerOverview(BaseModel):
     tenant_id: Optional[UUID]
-    message: str = "Portal do cliente — módulos em desenvolvimento"
+    message: str = "Portal do parceiro — módulos em desenvolvimento"
