@@ -31,7 +31,7 @@ import {
 import type { User, UserRole } from "@/types/user";
 import { formatRole } from "@/lib/utils";
 
-const ROLES: UserRole[] = ["MASTER", "ADMIN", "MANAGER", "STAFF", "CLIENT"];
+const ROLES: UserRole[] = ["MASTER", "ADMIN", "MANAGER", "STAFF", "PARTNER"];
 
 interface UserActionsProps {
   user: User;

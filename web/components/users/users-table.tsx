@@ -95,7 +95,7 @@ export function UsersTable() {
               <SelectItem value="ADMIN">Administrador</SelectItem>
               <SelectItem value="MANAGER">Gerente</SelectItem>
               <SelectItem value="STAFF">Colaborador</SelectItem>
-              <SelectItem value="CLIENT">Cliente</SelectItem>
+              <SelectItem value="PARTNER">Parceiro</SelectItem>
             </SelectContent>
           </Select>
 

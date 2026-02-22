@@ -27,12 +27,12 @@ const schema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("E-mail inválido"),
   password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres"),
-  role: z.enum(["MASTER", "ADMIN", "MANAGER", "STAFF", "CLIENT"] as const),
+  role: z.enum(["MASTER", "ADMIN", "MANAGER", "STAFF", "PARTNER"] as const),
 });
 
 type FormData = z.infer<typeof schema>;
 
-const ROLES: UserRole[] = ["ADMIN", "MANAGER", "STAFF", "CLIENT"];
+const ROLES: UserRole[] = ["ADMIN", "MANAGER", "STAFF"];
 
 export default function NewUserPage() {
   const router = useRouter();
