@@ -17,13 +17,8 @@ const navItems = [
     icon: Building2,
   },
   {
-    label: "LPU",
-    href: "/lpu",
-    icon: BookOpen,
-  },
-  {
     label: "Catálogo",
-    href: "/catalog",
+    href: "/catalogo",
     icon: Settings2,
   },
   {

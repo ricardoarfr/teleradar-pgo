@@ -22,7 +22,7 @@ from app.modules.projects.models import Project, ProjectStatus  # noqa: F401
 from app.modules.materials.models import Material  # noqa: F401
 from app.modules.payments.models import Payment, PaymentStatus  # noqa: F401
 from app.modules.partners.models import PartnerProfile  # noqa: F401
-from app.modules.lpu.models import Classe, Unidade, Servico, LPU, LPUItem  # noqa: F401
+from app.modules.catalogo.lpu.models import Classe, Unidade, Servico, LPU, LPUItem # noqa: F401
 
 target_metadata = Base.metadata
 
@@ -41,11 +41,8 @@ def run_migrations_offline() -> None:
     context.configure(
         url=url,
         target_metadata=target_metadata,
-        literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
-    with context.begin_transaction():
-        context.run_migrations()
 
 
 def do_run_migrations(connection: Connection) -> None:
