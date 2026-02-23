@@ -3,11 +3,11 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useLPU } from "@/hooks/use-lpu";
+import { useLPU } from "@/hooks/use-catalogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { LPUItemsTable } from "@/components/lpu/lpu-items-table";
+import { LPUItemsTable } from "@/components/catalogo/lpu/lpu-items-table";
 import { usePartners } from "@/hooks/use-partners"; // Assuming usePartners exists and works
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";

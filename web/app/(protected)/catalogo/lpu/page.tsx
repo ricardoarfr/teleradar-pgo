@@ -1,4 +1,4 @@
-import { LPUTable } from "@/components/lpu/lpu-table";
+import { LPUTable } from "@/components/catalogo/lpu/lpu-table";
 
 export default function LPUPage() {
   return (
