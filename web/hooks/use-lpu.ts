@@ -28,6 +28,7 @@ interface ListClassesParams {
   per_page?: number;
   ativa?: boolean;
   search?: string;
+  [key: string]: unknown; // Add index signature
 }
 
 export function useClasses(params: ListClassesParams = {}) {
@@ -76,6 +77,7 @@ interface ListUnidadesParams {
   per_page?: number;
   ativa?: boolean;
   search?: string;
+  [key: string]: unknown; // Add index signature
 }
 
 export function useUnidades(params: ListUnidadesParams = {}) {
@@ -126,6 +128,7 @@ interface ListServicosParams {
   classe_id?: string;
   unidade_id?: string;
   search?: string;
+  [key: string]: unknown; // Add index signature
 }
 
 export function useServicos(params: ListServicosParams = {}) {
@@ -175,6 +178,7 @@ interface ListLPUsParams {
   parceiro_id?: string;
   ativa?: boolean;
   search?: string;
+  [key: string]: unknown; // Add index signature
 }
 
 export function useLPUs(params: ListLPUsParams = {}) {
@@ -222,6 +226,7 @@ interface ListLPUItemsParams {
   page?: number;
   per_page?: number;
   search?: string;
+  [key: string]: unknown; // Add index signature
 }
 
 export function useLPUItems(lpuId: string, params: ListLPUItemsParams = {}) {
