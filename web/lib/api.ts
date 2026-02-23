@@ -99,3 +99,7 @@ export async function apiPut<T>(url: string, body?: unknown): Promise<T> {
   const response = await api.put<{ success: boolean; data: T }>(url, body);
   return response.data.data;
 }
+
+export async function apiDelete(url: string): Promise<void> {
+  await api.delete(url);
+}
