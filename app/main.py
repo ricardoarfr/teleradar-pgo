@@ -52,7 +52,7 @@ from app.modules.materials.router import router as materials_router
 from app.modules.payments.router import router as payments_router
 from app.modules.reports.router import router as reports_router
 from app.modules.partners.router import router as partners_router
-from app.modules.lpu.router import router as lpu_router
+from app.modules.catalogo.__init__ import router as catalogo_router
 
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
@@ -65,7 +65,7 @@ app.include_router(materials_router, prefix="/modules/materials", tags=["Módulo
 app.include_router(payments_router, prefix="/modules/payments", tags=["Módulo: Pagamentos"])
 app.include_router(reports_router, prefix="/modules/reports", tags=["Módulo: Relatórios"])
 app.include_router(partners_router, prefix="/admin/partners", tags=["Parceiros"])
-app.include_router(lpu_router, prefix="/modules/lpu", tags=["Módulo: LPU"])
+app.include_router(catalogo_router, prefix="/modules/catalogo", tags=["Módulo: Catálogo"])
 
 
 @app.get("/health", tags=["Health"])
