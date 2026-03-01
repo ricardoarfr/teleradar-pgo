@@ -1,31 +1,77 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LPUForm } from "@/components/catalogo/lpu/lpu-form";
+import { useLPU, useUpdateLPU } from "@/hooks/use-catalogo";
+import { usePartners } from "@/hooks/use-partners";
+import { toast } from "@/components/ui/use-toast";
+import type { LPUUpdate } from "@/types/catalogo";
 
 export default function LPUEditPage() {
   const params = useParams();
   const lpuId = params.id as string;
+  const router = useRouter();
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const { data: lpu, isLoading } = useLPU(lpuId);
+  const updateLPU = useUpdateLPU();
+  const { data: partnersData } = usePartners({ per_page: 200 });
+  const parceiros = partnersData?.results ?? [];
+
+  const handleSubmit = async (data: LPUUpdate) => {
+    setApiError(null);
+    try {
+      await updateLPU.mutateAsync({ id: lpuId, data });
+      toast({ title: "LPU atualizada!", description: "As alterações foram salvas com sucesso." });
+      router.push(`/catalogo/lpu/${lpuId}`);
+    } catch (err: any) {
+      setApiError(
+        err?.response?.data?.detail ?? "Erro ao atualizar LPU. Verifique os dados."
+      );
+    }
+  };
+
+  if (isLoading || !lpu) {
+    return (
+      <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+        Carregando...
+      </div>
+    );
+  }
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center gap-4">
-        <Link href={`/catalogo/lpu/${lpuId}`}>
-          <Button variant="outline" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+    <div className="max-w-2xl">
+      <div className="mb-6">
+        <Link
+          href={`/catalogo/lpu/${lpuId}`}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar para {lpu.nome}
         </Link>
-        <h2 className="text-3xl font-bold tracking-tight text-foreground">
-          Editar LPU: {lpuId}
-        </h2>
       </div>
 
-      {/* Formulário de edição de LPU aqui */}
-      <div className="rounded-md border p-8">
-        <p className="text-muted-foreground">Formulário de edição de LPU será implementado aqui.</p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Editar LPU</CardTitle>
+          <CardDescription>{lpu.nome}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LPUForm
+            mode="edit"
+            lpu={lpu}
+            parceiros={parceiros}
+            onSubmit={handleSubmit}
+            isSubmitting={updateLPU.isPending}
+            apiError={apiError}
+            onCancel={() => router.push(`/catalogo/lpu/${lpuId}`)}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
