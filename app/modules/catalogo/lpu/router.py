@@ -257,6 +257,15 @@ async def update_lpu(
     return success("LPU atualizada.", schemas.LPUResponse.model_validate(lpu))
 
 
+@router.delete("/lpus/{lpu_id}", status_code=204, tags=["LPU"])
+async def delete_lpu(
+    lpu_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    ctx: TenantContext = Depends(_admin_tenant),
+):
+    await service.delete_lpu(db, ctx.tenant_id, lpu_id)
+
+
 # ===========================================================================
 # LPU ITENS — onde o preço vive
 # ===========================================================================

@@ -490,6 +490,16 @@ async def update_item_lpu(
     return item
 
 
+async def delete_lpu(
+    db: AsyncSession,
+    tenant_id: UUID,
+    lpu_id: UUID,
+) -> None:
+    lpu = await get_lpu(db, tenant_id, lpu_id)
+    await db.delete(lpu)
+    await db.commit()
+
+
 async def remove_item_lpu(
     db: AsyncSession,
     tenant_id: UUID,
