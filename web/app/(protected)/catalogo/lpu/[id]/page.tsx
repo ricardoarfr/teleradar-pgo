@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useLPU } from "@/hooks/use-catalogo";
@@ -8,20 +8,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LPUItemsTable } from "@/components/catalogo/lpu/lpu-items-table";
-import { usePartners } from "@/hooks/use-partners"; // Assuming usePartners exists and works
+import { usePartners } from "@/hooks/use-partners";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 export default function LPUSinglePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const lpuId = params.id as string;
 
-  const { data: lpu, isLoading: isLoadingLPU } = useLPU(lpuId);
+  // tenant_id vem na URL quando o usuário é MASTER sem tenant
+  const tenantId = searchParams.get("tenant_id") ?? undefined;
+
+  const { data: lpu, isLoading: isLoadingLPU } = useLPU(lpuId, tenantId);
   const { data: partnersData, isLoading: isLoadingPartners } = usePartners({ per_page: 100 });
 
   const getPartnerName = (id: string) => {
     return partnersData?.results.find((p) => p.id === id)?.name ?? "Carregando...";
   };
+
+  // tenant efetivo para operações de escrita: preferir o do LPU carregado, senão o da URL
+  const effectiveTenantId = (lpu as any)?.tenant_id ?? tenantId;
 
   if (isLoadingLPU || isLoadingPartners) {
     return (
@@ -49,6 +56,10 @@ export default function LPUSinglePage() {
     );
   }
 
+  const editHref = effectiveTenantId
+    ? `/catalogo/lpu/${lpu.id}/edit?tenant_id=${effectiveTenantId}`
+    : `/catalogo/lpu/${lpu.id}/edit`;
+
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
@@ -62,8 +73,8 @@ export default function LPUSinglePage() {
             LPU: {lpu.nome}
           </h2>
         </div>
-        <Link href={`/catalogo/lpu/${lpu.id}/edit`}>
-            <Button>Editar LPU</Button>
+        <Link href={editHref}>
+          <Button>Editar LPU</Button>
         </Link>
       </div>
 
@@ -98,7 +109,10 @@ export default function LPUSinglePage() {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="lpu-status">Status</Label>
-            <Badge variant={lpu.ativa ? "outline" : "secondary"} className={lpu.ativa ? "text-green-600 bg-green-50 border-green-200 w-fit" : "w-fit"}>
+            <Badge
+              variant={lpu.ativa ? "outline" : "secondary"}
+              className={lpu.ativa ? "text-green-600 bg-green-50 border-green-200 w-fit" : "w-fit"}
+            >
               {lpu.ativa ? "Ativa" : "Inativa"}
             </Badge>
           </div>
@@ -110,7 +124,7 @@ export default function LPUSinglePage() {
       </div>
 
       <h3 className="text-xl font-semibold mb-4">Itens da LPU</h3>
-      <LPUItemsTable lpuId={lpu.id} />
+      <LPUItemsTable lpuId={lpu.id} tenantId={effectiveTenantId} />
     </div>
   );
 }
