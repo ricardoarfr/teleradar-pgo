@@ -184,39 +184,56 @@ interface ListLPUsParams {
   [key: string]: unknown;
 }
 
-export function useLPUs(params: ListLPUsParams = {}) {
+export function useLPUs(params: ListLPUsParams = {}, tenantId?: string) {
   return useQuery({
-    queryKey: ["catalogo-lpus", params], // Key ajustada
-    queryFn: () => apiGet<PagedResponse<LPU>>("/modules/catalogo/lpu/lpus", params), // Rota ajustada
+    queryKey: ["catalogo-lpus", params, tenantId],
+    queryFn: () =>
+      apiGet<PagedResponse<LPU>>("/modules/catalogo/lpu/lpus", {
+        ...params,
+        ...(tenantId ? { tenant_id: tenantId } : {}),
+      }),
   });
 }
 
-export function useLPU(id: string) {
+export function useLPU(id: string, tenantId?: string) {
   return useQuery({
-    queryKey: ["catalogo-lpus", id], // Key ajustada
-    queryFn: () => apiGet<LPU>(`/modules/catalogo/lpu/lpus/${id}`), // Rota ajustada
+    queryKey: ["catalogo-lpus", id, tenantId],
+    queryFn: () =>
+      apiGet<LPU>(
+        `/modules/catalogo/lpu/lpus/${id}`,
+        tenantId ? { tenant_id: tenantId } : undefined,
+      ),
     enabled: !!id,
   });
 }
 
-export function useCreateLPU() {
+export function useCreateLPU(tenantId?: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: LPUCreate) => apiPost<LPU>("/modules/catalogo/lpu/lpus", data), // Rota ajustada
+    mutationFn: (data: LPUCreate) =>
+      apiPost<LPU>(
+        "/modules/catalogo/lpu/lpus",
+        data,
+        tenantId ? { tenant_id: tenantId } : undefined,
+      ),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["catalogo-lpus"] }); // Key ajustada
+      qc.invalidateQueries({ queryKey: ["catalogo-lpus"] });
     },
   });
 }
 
-export function useUpdateLPU() {
+export function useUpdateLPU(tenantId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: LPUUpdate }) =>
-      apiPut<LPU>(`/modules/catalogo/lpu/lpus/${id}`, data), // Rota ajustada
+      apiPut<LPU>(
+        `/modules/catalogo/lpu/lpus/${id}`,
+        data,
+        tenantId ? { tenant_id: tenantId } : undefined,
+      ),
     onSuccess: (_data, { id }) => {
-      qc.invalidateQueries({ queryKey: ["catalogo-lpus"] }); // Key ajustada
-      qc.invalidateQueries({ queryKey: ["catalogo-lpus", id] }); // Key ajustada
+      qc.invalidateQueries({ queryKey: ["catalogo-lpus"] });
+      qc.invalidateQueries({ queryKey: ["catalogo-lpus", id] });
     },
   });
 }
@@ -232,52 +249,71 @@ interface ListLPUItemsParams {
   [key: string]: unknown;
 }
 
-export function useLPUItems(lpuId: string, params: ListLPUItemsParams = {}) {
+export function useLPUItems(lpuId: string, params: ListLPUItemsParams = {}, tenantId?: string) {
   return useQuery({
-    queryKey: ["catalogo-lpus", lpuId, "items", params], // Key ajustada
-    queryFn: () => apiGet<PagedResponse<LPUItem>>(`/modules/catalogo/lpu/lpus/${lpuId}/itens`, params), // Rota ajustada
+    queryKey: ["catalogo-lpus", lpuId, "items", params, tenantId],
+    queryFn: () =>
+      apiGet<PagedResponse<LPUItem>>(`/modules/catalogo/lpu/lpus/${lpuId}/itens`, {
+        ...params,
+        ...(tenantId ? { tenant_id: tenantId } : {}),
+      }),
     enabled: !!lpuId,
   });
 }
 
-export function useLPUItem(lpuId: string, itemId: string) {
+export function useLPUItem(lpuId: string, itemId: string, tenantId?: string) {
   return useQuery({
-    queryKey: ["catalogo-lpus", lpuId, "items", itemId], // Key ajustada
-    queryFn: () => apiGet<LPUItem>(`/modules/catalogo/lpu/lpus/${lpuId}/itens/${itemId}`), // Rota ajustada
+    queryKey: ["catalogo-lpus", lpuId, "items", itemId, tenantId],
+    queryFn: () =>
+      apiGet<LPUItem>(
+        `/modules/catalogo/lpu/lpus/${lpuId}/itens/${itemId}`,
+        tenantId ? { tenant_id: tenantId } : undefined,
+      ),
     enabled: !!lpuId && !!itemId,
   });
 }
 
-export function useAddLPUItem() {
+export function useAddLPUItem(tenantId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ lpuId, data }: { lpuId: string; data: LPUItemCreate }) =>
-      apiPost<LPUItem>(`/modules/catalogo/lpu/lpus/${lpuId}/itens`, data), // Rota ajustada
+      apiPost<LPUItem>(
+        `/modules/catalogo/lpu/lpus/${lpuId}/itens`,
+        data,
+        tenantId ? { tenant_id: tenantId } : undefined,
+      ),
     onSuccess: (_data, { lpuId }) => {
-      qc.invalidateQueries({ queryKey: ["catalogo-lpus", lpuId, "items"] }); // Key ajustada
+      qc.invalidateQueries({ queryKey: ["catalogo-lpus", lpuId, "items"] });
     },
   });
 }
 
-export function useUpdateLPUItem() {
+export function useUpdateLPUItem(tenantId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ lpuId, itemId, data }: { lpuId: string; itemId: string; data: LPUItemUpdate }) =>
-      apiPut<LPUItem>(`/modules/catalogo/lpu/lpus/${lpuId}/itens/${itemId}`, data), // Rota ajustada
+      apiPut<LPUItem>(
+        `/modules/catalogo/lpu/lpus/${lpuId}/itens/${itemId}`,
+        data,
+        tenantId ? { tenant_id: tenantId } : undefined,
+      ),
     onSuccess: (_data, { lpuId, itemId }) => {
-      qc.invalidateQueries({ queryKey: ["catalogo-lpus", lpuId, "items"] }); // Key ajustada
-      qc.invalidateQueries({ queryKey: ["catalogo-lpus", lpuId, "items", itemId] }); // Key ajustada
+      qc.invalidateQueries({ queryKey: ["catalogo-lpus", lpuId, "items"] });
+      qc.invalidateQueries({ queryKey: ["catalogo-lpus", lpuId, "items", itemId] });
     },
   });
 }
 
-export function useRemoveLPUItem() {
+export function useRemoveLPUItem(tenantId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ lpuId, itemId }: { lpuId: string; itemId: string }) =>
-      apiDelete(`/modules/catalogo/lpu/lpus/${lpuId}/itens/${itemId}`), // Rota ajustada
+      apiDelete(
+        `/modules/catalogo/lpu/lpus/${lpuId}/itens/${itemId}`,
+        tenantId ? { tenant_id: tenantId } : undefined,
+      ),
     onSuccess: (_data, { lpuId }) => {
-      qc.invalidateQueries({ queryKey: ["catalogo-lpus", lpuId, "items"] }); // Key ajustada
+      qc.invalidateQueries({ queryKey: ["catalogo-lpus", lpuId, "items"] });
     },
   });
 }

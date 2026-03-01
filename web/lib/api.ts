@@ -90,16 +90,16 @@ export async function apiGet<T>(url: string, params?: Record<string, unknown>): 
   return response.data.data;
 }
 
-export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
-  const response = await api.post<{ success: boolean; data: T }>(url, body);
+export async function apiPost<T>(url: string, body?: unknown, params?: Record<string, unknown>): Promise<T> {
+  const response = await api.post<{ success: boolean; data: T }>(url, body, { params });
   return response.data.data;
 }
 
-export async function apiPut<T>(url: string, body?: unknown): Promise<T> {
-  const response = await api.put<{ success: boolean; data: T }>(url, body);
+export async function apiPut<T>(url: string, body?: unknown, params?: Record<string, unknown>): Promise<T> {
+  const response = await api.put<{ success: boolean; data: T }>(url, body, { params });
   return response.data.data;
 }
 
-export async function apiDelete(url: string): Promise<void> {
-  await api.delete(url);
+export async function apiDelete(url: string, params?: Record<string, unknown>): Promise<void> {
+  await api.delete(url, { params });
 }

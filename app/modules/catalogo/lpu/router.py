@@ -17,6 +17,11 @@ Controle de acesso:
   - Leitura: STAFF, MANAGER, ADMIN, MASTER
   - Escrita (catálogo global): ADMIN, MASTER
   - Escrita (LPU/Itens): ADMIN, MASTER
+
+Resolução de tenant:
+  Operações tenant-scoped usam a dependency TenantContext (app/rbac/tenant.py).
+  Usuários com tenant_id próprio têm o tenant resolvido automaticamente.
+  MASTER sem tenant deve informar ?tenant_id= na query.
 """
 from typing import Optional
 from uuid import UUID
@@ -24,10 +29,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.models import User, UserRole
+from app.auth.models import UserRole
 from app.database.connection import get_db
 from app.modules.catalogo.lpu import schemas, service
 from app.rbac.dependencies import require_roles
+from app.rbac.tenant import TenantContext, tenant_context
 from app.utils.responses import success
 
 router = APIRouter()
@@ -35,6 +41,10 @@ router = APIRouter()
 # Dependências de RBAC reutilizáveis
 _staff_up = require_roles(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN, UserRole.MASTER)
 _admin_up = require_roles(UserRole.ADMIN, UserRole.MASTER)
+
+# Dependências tenant-scoped
+_staff_tenant = tenant_context(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN, UserRole.MASTER)
+_admin_tenant = tenant_context(UserRole.ADMIN, UserRole.MASTER)
 
 
 # ===========================================================================
@@ -45,7 +55,7 @@ _admin_up = require_roles(UserRole.ADMIN, UserRole.MASTER)
 async def create_classe(
     data: schemas.ClasseCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_admin_up),
+    _=Depends(_admin_up),
 ):
     classe = await service.create_classe(db, data)
     return success("Classe criada.", schemas.ClasseResponse.model_validate(classe))
@@ -57,7 +67,7 @@ async def list_classes(
     per_page: int = Query(20, ge=1, le=100),
     ativa: Optional[bool] = None,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_staff_up),
+    _=Depends(_staff_up),
 ):
     classes, total = await service.list_classes(db, page, per_page, ativa)
     return success("Lista de classes.", {
@@ -72,7 +82,7 @@ async def list_classes(
 async def get_classe(
     classe_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_staff_up),
+    _=Depends(_staff_up),
 ):
     classe = await service.get_classe(db, classe_id)
     return success("Dados da classe.", schemas.ClasseResponse.model_validate(classe))
@@ -83,7 +93,7 @@ async def update_classe(
     classe_id: UUID,
     data: schemas.ClasseUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_admin_up),
+    _=Depends(_admin_up),
 ):
     classe = await service.update_classe(db, classe_id, data)
     return success("Classe atualizada.", schemas.ClasseResponse.model_validate(classe))
@@ -97,7 +107,7 @@ async def update_classe(
 async def create_unidade(
     data: schemas.UnidadeCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_admin_up),
+    _=Depends(_admin_up),
 ):
     unidade = await service.create_unidade(db, data)
     return success("Unidade criada.", schemas.UnidadeResponse.model_validate(unidade))
@@ -109,7 +119,7 @@ async def list_unidades(
     per_page: int = Query(20, ge=1, le=100),
     ativa: Optional[bool] = None,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_staff_up),
+    _=Depends(_staff_up),
 ):
     unidades, total = await service.list_unidades(db, page, per_page, ativa)
     return success("Lista de unidades.", {
@@ -124,7 +134,7 @@ async def list_unidades(
 async def get_unidade(
     unidade_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_staff_up),
+    _=Depends(_staff_up),
 ):
     unidade = await service.get_unidade(db, unidade_id)
     return success("Dados da unidade.", schemas.UnidadeResponse.model_validate(unidade))
@@ -135,7 +145,7 @@ async def update_unidade(
     unidade_id: UUID,
     data: schemas.UnidadeUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_admin_up),
+    _=Depends(_admin_up),
 ):
     unidade = await service.update_unidade(db, unidade_id, data)
     return success("Unidade atualizada.", schemas.UnidadeResponse.model_validate(unidade))
@@ -145,24 +155,24 @@ async def update_unidade(
 # SERVICO — sem preço
 # ===========================================================================
 
-@router.post("/servicos", status_code=201, tags=["LPU: Servi\u00e7os"])
+@router.post("/servicos", status_code=201, tags=["LPU: Serviços"])
 async def create_servico(
     data: schemas.ServicoCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_admin_up),
+    _=Depends(_admin_up),
 ):
     servico = await service.create_servico(db, data)
     return success("Serviço criado.", schemas.ServicoResponse.model_validate(servico))
 
 
-@router.get("/servicos", tags=["LPU: Servi\u00e7os"])
+@router.get("/servicos", tags=["LPU: Serviços"])
 async def list_servicos(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     ativo: Optional[bool] = None,
     classe_id: Optional[UUID] = None,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_staff_up),
+    _=Depends(_staff_up),
 ):
     servicos, total = await service.list_servicos(db, page, per_page, ativo, classe_id)
     return success("Lista de serviços.", {
@@ -173,22 +183,22 @@ async def list_servicos(
     })
 
 
-@router.get("/servicos/{servico_id}", tags=["LPU: Servi\u00e7os"])
+@router.get("/servicos/{servico_id}", tags=["LPU: Serviços"])
 async def get_servico(
     servico_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_staff_up),
+    _=Depends(_staff_up),
 ):
     servico = await service.get_servico(db, servico_id)
     return success("Dados do serviço.", schemas.ServicoResponse.model_validate(servico))
 
 
-@router.put("/servicos/{servico_id}", tags=["LPU: Servi\u00e7os"])
+@router.put("/servicos/{servico_id}", tags=["LPU: Serviços"])
 async def update_servico(
     servico_id: UUID,
     data: schemas.ServicoUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(_admin_up),
+    _=Depends(_admin_up),
 ):
     servico = await service.update_servico(db, servico_id, data)
     return success("Serviço atualizado.", schemas.ServicoResponse.model_validate(servico))
@@ -202,9 +212,9 @@ async def update_servico(
 async def create_lpu(
     data: schemas.LPUCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_admin_up),
+    ctx: TenantContext = Depends(_admin_tenant),
 ):
-    lpu = await service.create_lpu(db, current_user.tenant_id, data)
+    lpu = await service.create_lpu(db, ctx.tenant_id, data)
     return success("LPU criada.", schemas.LPUResponse.model_validate(lpu))
 
 
@@ -215,9 +225,9 @@ async def list_lpus(
     parceiro_id: Optional[UUID] = None,
     ativa: Optional[bool] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_staff_up),
+    ctx: TenantContext = Depends(_staff_tenant),
 ):
-    lpus, total = await service.list_lpus(db, current_user.tenant_id, page, per_page, parceiro_id, ativa)
+    lpus, total = await service.list_lpus(db, ctx.tenant_id, page, per_page, parceiro_id, ativa)
     return success("Lista de LPUs.", {
         "results": [schemas.LPUResponse.model_validate(l) for l in lpus],
         "total": total,
@@ -230,9 +240,9 @@ async def list_lpus(
 async def get_lpu(
     lpu_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_staff_up),
+    ctx: TenantContext = Depends(_staff_tenant),
 ):
-    lpu = await service.get_lpu(db, current_user.tenant_id, lpu_id)
+    lpu = await service.get_lpu(db, ctx.tenant_id, lpu_id)
     return success("Dados da LPU.", schemas.LPUResponse.model_validate(lpu))
 
 
@@ -241,9 +251,9 @@ async def update_lpu(
     lpu_id: UUID,
     data: schemas.LPUUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_admin_up),
+    ctx: TenantContext = Depends(_admin_tenant),
 ):
-    lpu = await service.update_lpu(db, current_user.tenant_id, lpu_id, data)
+    lpu = await service.update_lpu(db, ctx.tenant_id, lpu_id, data)
     return success("LPU atualizada.", schemas.LPUResponse.model_validate(lpu))
 
 
@@ -256,9 +266,9 @@ async def add_item_lpu(
     lpu_id: UUID,
     data: schemas.LPUItemCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_admin_up),
+    ctx: TenantContext = Depends(_admin_tenant),
 ):
-    item = await service.add_item_lpu(db, current_user.tenant_id, lpu_id, data)
+    item = await service.add_item_lpu(db, ctx.tenant_id, lpu_id, data)
     return success("Item adicionado à LPU.", schemas.LPUItemResponse.model_validate(item))
 
 
@@ -268,9 +278,9 @@ async def list_itens_lpu(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_staff_up),
+    ctx: TenantContext = Depends(_staff_tenant),
 ):
-    itens, total = await service.list_itens_lpu(db, current_user.tenant_id, lpu_id, page, per_page)
+    itens, total = await service.list_itens_lpu(db, ctx.tenant_id, lpu_id, page, per_page)
     return success("Itens da LPU.", {
         "results": [schemas.LPUItemResponse.model_validate(i) for i in itens],
         "total": total,
@@ -284,9 +294,9 @@ async def get_item_lpu(
     lpu_id: UUID,
     item_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_staff_up),
+    ctx: TenantContext = Depends(_staff_tenant),
 ):
-    item = await service.get_item_lpu(db, current_user.tenant_id, lpu_id, item_id)
+    item = await service.get_item_lpu(db, ctx.tenant_id, lpu_id, item_id)
     return success("Dados do item.", schemas.LPUItemResponse.model_validate(item))
 
 
@@ -296,9 +306,9 @@ async def update_item_lpu(
     item_id: UUID,
     data: schemas.LPUItemUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_admin_up),
+    ctx: TenantContext = Depends(_admin_tenant),
 ):
-    item = await service.update_item_lpu(db, current_user.tenant_id, lpu_id, item_id, data)
+    item = await service.update_item_lpu(db, ctx.tenant_id, lpu_id, item_id, data)
     return success("Item atualizado.", schemas.LPUItemResponse.model_validate(item))
 
 
@@ -307,6 +317,6 @@ async def remove_item_lpu(
     lpu_id: UUID,
     item_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_admin_up),
+    ctx: TenantContext = Depends(_admin_tenant),
 ):
-    await service.remove_item_lpu(db, current_user.tenant_id, lpu_id, item_id)
+    await service.remove_item_lpu(db, ctx.tenant_id, lpu_id, item_id)

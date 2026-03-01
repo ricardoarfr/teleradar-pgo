@@ -10,9 +10,10 @@ import Link from "next/link"; // Adicionando a importação do Link para ser con
 
 interface LPUItemsTableProps {
   lpuId: string;
+  tenantId?: string;
 }
 
-export function LPUItemsTable({ lpuId }: LPUItemsTableProps) {
+export function LPUItemsTable({ lpuId, tenantId }: LPUItemsTableProps) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -25,8 +26,8 @@ export function LPUItemsTable({ lpuId }: LPUItemsTableProps) {
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
   };
 
-  const { data, isLoading } = useLPUItems(lpuId, params);
-  const removeMutation = useRemoveLPUItem();
+  const { data, isLoading } = useLPUItems(lpuId, params, tenantId);
+  const removeMutation = useRemoveLPUItem(tenantId);
 
   const items = data?.results ?? [];
   const total = data?.total ?? 0;
