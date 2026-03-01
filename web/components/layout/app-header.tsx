@@ -1,10 +1,12 @@
 "use client";
 
 import { useTransition } from "react";
+import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut } from "lucide-react";
+import { useScreenAccess } from "@/hooks/use-screen-access";
+import { LogOut, ShieldCheck } from "lucide-react";
 
 function getInitials(name: string): string {
   return name
@@ -18,6 +20,7 @@ function getInitials(name: string): string {
 export function AppHeader() {
   const { user, logout } = useAuth();
   const [isPending, startTransition] = useTransition();
+  const { view: canViewProfiles } = useScreenAccess("admin.profiles");
 
   const handleLogout = () => {
     startTransition(async () => {
@@ -29,6 +32,14 @@ export function AppHeader() {
     <header className="h-14 border-b bg-background flex items-center justify-between px-6">
       <div />
       <div className="flex items-center gap-3">
+        {canViewProfiles && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/profiles" className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              PERFIL
+            </Link>
+          </Button>
+        )}
         {user && (
           <>
             <div className="text-right hidden sm:block">
