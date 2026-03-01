@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useLPUItems, useRemoveLPUItem } from "@/hooks/use-lpu";
+import { useLPUItems, useRemoveLPUItem } from "@/hooks/use-catalogo";
 import { ChevronLeft, ChevronRight, Plus, Search, Trash2, Edit2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link"; // Adicionando a importação do Link para ser consistente, caso seja necessário no futuro

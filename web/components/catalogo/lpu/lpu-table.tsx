@@ -5,7 +5,7 @@ import Link from "next/link"; // Ensure Link is imported here
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useLPUs } from "@/hooks/use-lpu";
+import { useLPUs } from "@/hooks/use-catalogo";
 import { usePartners } from "@/hooks/use-partners"; // Assuming usePartners exists and works
 import { formatDate } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Eye, Plus, Search } from "lucide-react";
