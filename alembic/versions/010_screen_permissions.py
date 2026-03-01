@@ -18,9 +18,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Create the enum type only if it doesn't already exist (idempotent)
+    userrole_enum = postgresql.ENUM(
+        "MASTER", "ADMIN", "MANAGER", "STAFF", "PARTNER",
+        name="userrole",
+    )
+    userrole_enum.create(op.get_bind(), checkfirst=True)
+
     op.create_table(
         "screen_permissions",
-        sa.Column("role", sa.Enum("MASTER", "ADMIN", "MANAGER", "STAFF", "PARTNER", name="userrole", create_type=False), nullable=False),
+        sa.Column(
+            "role",
+            postgresql.ENUM("MASTER", "ADMIN", "MANAGER", "STAFF", "PARTNER", name="userrole", create_type=False),
+            nullable=False,
+        ),
         sa.Column("screen_key", sa.String(length=100), nullable=False),
         sa.Column("can_view", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("can_create", sa.Boolean(), nullable=False, server_default="false"),
