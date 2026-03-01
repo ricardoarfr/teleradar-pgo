@@ -1,10 +1,10 @@
 "use client";
 
 import { Suspense } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { useLPU } from "@/hooks/use-catalogo";
+import { ArrowLeft, Trash2 } from "lucide-react";
+import { useLPU, useDeleteLPU } from "@/hooks/use-catalogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,12 @@ import { LPUItemsTable } from "@/components/catalogo/lpu/lpu-items-table";
 import { usePartners } from "@/hooks/use-partners";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/use-toast";
 
 function LPUSinglePageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const lpuId = params.id as string;
 
   // tenant_id vem na URL quando o usuário é MASTER sem tenant
@@ -30,6 +32,23 @@ function LPUSinglePageContent() {
 
   // tenant efetivo para operações de escrita: preferir o do LPU carregado, senão o da URL
   const effectiveTenantId = (lpu as any)?.tenant_id ?? tenantId;
+
+  const deleteLPU = useDeleteLPU(effectiveTenantId);
+
+  const handleDelete = async () => {
+    if (!confirm(`Tem certeza que deseja excluir a LPU "${lpu?.nome}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await deleteLPU.mutateAsync(lpuId);
+      toast({ title: "LPU excluída!", description: "A LPU foi removida com sucesso." });
+      router.push("/catalogo/lpu");
+    } catch (err: any) {
+      toast({
+        title: "Erro ao excluir",
+        description: err?.response?.data?.detail ?? "Não foi possível excluir a LPU.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoadingLPU || isLoadingPartners) {
     return (
@@ -74,9 +93,20 @@ function LPUSinglePageContent() {
             LPU: {lpu.nome}
           </h2>
         </div>
-        <Link href={editHref}>
-          <Button>Editar LPU</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={editHref}>
+            <Button>Editar LPU</Button>
+          </Link>
+          <Button
+            variant="outline"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={handleDelete}
+            disabled={deleteLPU.isPending}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {deleteLPU.isPending ? "Excluindo..." : "Excluir"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">

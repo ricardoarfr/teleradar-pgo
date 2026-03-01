@@ -238,6 +238,20 @@ export function useUpdateLPU(tenantId?: string) {
   });
 }
 
+export function useDeleteLPU(tenantId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiDelete(
+        `/modules/catalogo/lpu/lpus/${id}`,
+        tenantId ? { tenant_id: tenantId } : undefined,
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["catalogo-lpus"] });
+    },
+  });
+}
+
 // ===========================================================================
 // LPU ITEM
 // ===========================================================================
