@@ -1,0 +1,35 @@
+name: Auto PR
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Criar PR automaticamente para main
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+
+          EXISTING=$(gh pr list \
+            --head "$BRANCH" \
+            --base main \
+            --json number \
+            --jq '.[0].number' 2>/dev/null)
+
+          if [ -z "$EXISTING" ]; then
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "Auto PR: $BRANCH" \
+              --body "PR criado automaticamente por push na branch \`$BRANCH\`."
+            echo "PR criado."
+          else
+            echo "PR #$EXISTING já existe — atualizado automaticamente pelo push."
+          fi
