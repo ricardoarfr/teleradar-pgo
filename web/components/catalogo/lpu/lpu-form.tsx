@@ -115,11 +115,13 @@ export function LPUForm(props: LPUFormProps) {
               <SelectValue placeholder="Selecione um parceiro..." />
             </SelectTrigger>
             <SelectContent>
-              {props.parceiros.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
+              {props.parceiros
+                .filter((p) => p.profile_id)
+                .map((p) => (
+                  <SelectItem key={p.id} value={p.profile_id!}>
+                    {p.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
           {errors.parceiro_id && (

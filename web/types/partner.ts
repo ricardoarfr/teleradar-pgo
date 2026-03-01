@@ -33,6 +33,7 @@ export interface Partner {
 
 export interface PartnerListItem {
   id: string;
+  profile_id: string | null;
   name: string;
   email: string;
   status: UserStatus;

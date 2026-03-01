@@ -31,6 +31,7 @@ async def list_partners(
         profile = u.partner_profile
         results.append(schemas.PartnerListItem(
             id=u.id,
+            profile_id=profile.id if profile else None,
             name=u.name,
             email=u.email,
             status=u.status,
