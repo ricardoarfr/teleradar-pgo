@@ -33,7 +33,7 @@ export function LPUTable() {
   const partners = partnersData?.results ?? [];
 
   const getPartnerName = (id: string) => {
-    return partners.find((p) => p.id === id)?.name ?? "Carregando...";
+    return partners.find((p) => p.profile_id === id)?.name ?? "—";
   };
 
   const handleSearchChange = (value: string) => {

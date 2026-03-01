@@ -43,6 +43,7 @@ class PartnerDetail(BaseModel):
 
 class PartnerListItem(BaseModel):
     id: UUID
+    profile_id: Optional[UUID] = None
     name: str
     email: str
     status: UserStatus
