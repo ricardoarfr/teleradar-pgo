@@ -52,7 +52,7 @@ from app.modules.materials.router import router as materials_router
 from app.modules.payments.router import router as payments_router
 from app.modules.reports.router import router as reports_router
 from app.modules.partners.router import router as partners_router
-from app.modules.catalogo.__init__ import router as catalogo_router
+from app.modules.catalogo import router as catalogo_router
 from app.rbac.router import router as profiles_router
 
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
