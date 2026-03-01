@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Box } from "lucide-react";
+import { BookOpen, Box, Wrench } from "lucide-react";
 import { ScreenGuard } from "@/components/layout/screen-guard";
 
 export default function CatalogoHomePage() {
@@ -29,6 +29,23 @@ export default function CatalogoHomePage() {
               <div className="text-2xl font-bold">Gerenciar LPUs</div>
               <p className="text-xs text-muted-foreground">
                 Cadastro e gestão de listas de preço por parceiro.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/catalogo/servicos">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Atividades
+              </CardTitle>
+              <Wrench className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Gerenciar Atividades</div>
+              <p className="text-xs text-muted-foreground">
+                Cadastro e gestão do catálogo de atividades e serviços.
               </p>
             </CardContent>
           </Card>

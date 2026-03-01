@@ -279,6 +279,21 @@ async def update_servico(db: AsyncSession, servico_id: UUID, data: ServicoUpdate
     return servico
 
 
+async def delete_servico(db: AsyncSession, servico_id: UUID) -> None:
+    from app.modules.catalogo.lpu.models import LPUItem
+    servico = await get_servico(db, servico_id)
+    em_uso = (await db.execute(
+        select(func.count()).select_from(LPUItem).where(LPUItem.servico_id == servico_id)
+    )).scalar()
+    if em_uso:
+        raise HTTPException(
+            status_code=409,
+            detail="Atividade está vinculada a uma ou mais LPUs e não pode ser excluída.",
+        )
+    await db.delete(servico)
+    await db.commit()
+
+
 # ===========================================================================
 # LPU
 # ===========================================================================

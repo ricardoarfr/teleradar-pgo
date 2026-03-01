@@ -204,6 +204,15 @@ async def update_servico(
     return success("Serviço atualizado.", schemas.ServicoResponse.model_validate(servico))
 
 
+@router.delete("/servicos/{servico_id}", status_code=204, tags=["LPU: Serviços"])
+async def delete_servico(
+    servico_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(_admin_up),
+):
+    await service.delete_servico(db, servico_id)
+
+
 # ===========================================================================
 # LPU — tenant-scoped
 # ===========================================================================
