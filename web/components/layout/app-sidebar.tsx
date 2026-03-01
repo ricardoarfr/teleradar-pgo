@@ -2,34 +2,43 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Radio, UserCheck, Building2, BookOpen, Settings2 } from "lucide-react";
+import { Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getSidebarScreens } from "@/lib/screens";
+import { useScreenAccess } from "@/hooks/use-screen-access";
+import { useAuth } from "@/providers/auth-provider";
 
-const navItems = [
-  {
-    label: "Parceiros",
-    href: "/partners",
-    icon: UserCheck,
-  },
-  {
-    label: "Empresas",
-    href: "/companies",
-    icon: Building2,
-  },
-  {
-    label: "Catálogo",
-    href: "/catalogo",
-    icon: Settings2,
-  },
-  {
-    label: "Usuários",
-    href: "/admin/users",
-    icon: Users,
-  },
-];
+function SidebarItem({ screenKey, label, path, icon: Icon }: {
+  screenKey: string;
+  label: string;
+  path: string;
+  icon: React.ElementType;
+}) {
+  const { view } = useScreenAccess(screenKey);
+  const pathname = usePathname();
+
+  if (!view) return null;
+
+  const isActive = pathname.startsWith(path);
+  return (
+    <Link
+      href={path}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+        isActive
+          ? "bg-primary/10 text-primary"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      )}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </Link>
+  );
+}
 
 export function AppSidebar() {
-  const pathname = usePathname();
+  const { isLoading } = useAuth();
+  const screens = getSidebarScreens();
 
   return (
     <aside className="w-60 border-r bg-background flex flex-col">
@@ -41,24 +50,15 @@ export function AppSidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          );
-        })}
+        {!isLoading && screens.map((screen) => (
+          <SidebarItem
+            key={screen.key}
+            screenKey={screen.key}
+            label={screen.label}
+            path={screen.path}
+            icon={screen.icon!}
+          />
+        ))}
       </nav>
     </aside>
   );

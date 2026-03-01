@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/providers/auth-provider";
+import { ScreenPermissionsProvider } from "@/providers/screen-permissions-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -18,8 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <QueryProvider>
           <AuthProvider>
-            {children}
-            <Toaster />
+            <ScreenPermissionsProvider>
+              {children}
+              <Toaster />
+            </ScreenPermissionsProvider>
           </AuthProvider>
         </QueryProvider>
       </body>
