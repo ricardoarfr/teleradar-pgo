@@ -1,24 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useLPUItems, useRemoveLPUItem } from "@/hooks/use-catalogo";
-import { ChevronLeft, ChevronRight, Plus, Search, Trash2, Edit2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import Link from "next/link"; // Adicionando a importação do Link para ser consistente, caso seja necessário no futuro
+import { Badge } from "@/components/ui/badge";
+import { useServicos, useDeleteServico } from "@/hooks/use-catalogo";
+import { ChevronLeft, ChevronRight, Edit2, Plus, Search, Trash2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
-interface LPUItemsTableProps {
-  lpuId: string;
-  tenantId?: string;
-}
-
-export function LPUItemsTable({ lpuId, tenantId }: LPUItemsTableProps) {
+export function ServicoTable() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const perPage = 20;
-  const { toast } = useToast();
 
   const params = {
     page,
@@ -26,35 +21,31 @@ export function LPUItemsTable({ lpuId, tenantId }: LPUItemsTableProps) {
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
   };
 
-  const { data, isLoading } = useLPUItems(lpuId, params, tenantId);
-  const removeMutation = useRemoveLPUItem(tenantId);
+  const { data, isLoading } = useServicos(params);
+  const deleteMutation = useDeleteServico();
 
-  const items = data?.results ?? [];
+  const servicos = data?.results ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / perPage);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    clearTimeout((window as any)._itemsSearchTimeout);
-    (window as any)._itemsSearchTimeout = setTimeout(() => {
+    clearTimeout((window as any)._servicoSearchTimeout);
+    (window as any)._servicoSearchTimeout = setTimeout(() => {
       setDebouncedSearch(value);
       setPage(1);
     }, 400);
   };
 
-  const handleRemove = async (itemId: string) => {
-    if (!confirm("Tem certeza que deseja remover este item da LPU?")) return;
-
+  const handleDelete = async (id: string, nome: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a atividade "${nome}"?`)) return;
     try {
-      await removeMutation.mutateAsync({ lpuId, itemId });
+      await deleteMutation.mutateAsync(id);
+      toast({ title: "Atividade excluída!", description: "A atividade foi removida com sucesso." });
+    } catch (err: any) {
       toast({
-        title: "Sucesso",
-        description: "Item removido da LPU.",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível remover o item.",
+        title: "Erro ao excluir",
+        description: err?.response?.data?.detail ?? "Não foi possível excluir a atividade.",
         variant: "destructive",
       });
     }
@@ -62,34 +53,35 @@ export function LPUItemsTable({ lpuId, tenantId }: LPUItemsTableProps) {
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar item..."
+            placeholder="Buscar atividade..."
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-8 w-64"
           />
         </div>
-
-        <Link href={`/catalogo/lpu/${lpuId}/items/new${tenantId ? `?tenant_id=${tenantId}` : ""}`}>
+        <Link href="/catalogo/servicos/new">
           <Button size="sm">
             <Plus className="h-4 w-4" />
-            Adicionar Item
+            Nova atividade
           </Button>
         </Link>
       </div>
 
+      {/* Tabela */}
       <div className="rounded-md border overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Código</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Atividade</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Classe</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Unidade</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground text-right">Valor Unitário</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground text-right">Valor Classe</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">Ações</th>
             </tr>
           </thead>
@@ -100,31 +92,40 @@ export function LPUItemsTable({ lpuId, tenantId }: LPUItemsTableProps) {
                   Carregando...
                 </td>
               </tr>
-            ) : items.length === 0 ? (
+            ) : servicos.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                  Nenhum item encontrado nesta LPU.
+                  Nenhuma atividade encontrada.
                 </td>
               </tr>
             ) : (
-              items.map((item) => (
-                <tr key={item.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-mono text-xs">{item.servico?.codigo}</td>
-                  <td className="px-4 py-3 font-medium">{item.servico?.atividade}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{item.servico?.unidade?.sigla}</td>
-                  <td className="px-4 py-3 text-right font-medium">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_unitario)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">
-                    {item.valor_classe ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_classe) : "—"}
+              servicos.map((s) => (
+                <tr key={s.id} className="hover:bg-muted/30">
+                  <td className="px-4 py-3 font-mono text-xs">{s.codigo}</td>
+                  <td className="px-4 py-3 font-medium">{s.atividade}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{s.classe?.nome ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{s.unidade?.sigla ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <Badge
+                      variant={s.ativo ? "outline" : "secondary"}
+                      className={s.ativo ? "text-green-600 bg-green-50 border-green-200" : ""}
+                    >
+                      {s.ativo ? "Ativa" : "Inativa"}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3 text-right space-x-1">
-                    <Link href={`/catalogo/lpu/${lpuId}/items/${item.id}/edit${tenantId ? `?tenant_id=${tenantId}` : ""}`}>
+                    <Link href={`/catalogo/servicos/${s.id}/edit`}>
                       <Button variant="ghost" size="icon">
                         <Edit2 className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleRemove(item.id)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(s.id, s.atividade)}
+                      disabled={deleteMutation.isPending}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </td>
@@ -135,10 +136,11 @@ export function LPUItemsTable({ lpuId, tenantId }: LPUItemsTableProps) {
         </table>
       </div>
 
+      {/* Paginação */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            {total} item{total !== 1 ? "s" : ""} no total
+            {total} atividade{total !== 1 ? "s" : ""} no total
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -149,9 +151,7 @@ export function LPUItemsTable({ lpuId, tenantId }: LPUItemsTableProps) {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm">
-              {page} / {totalPages}
-            </span>
+            <span className="text-sm">{page} / {totalPages}</span>
             <Button
               variant="outline"
               size="icon"

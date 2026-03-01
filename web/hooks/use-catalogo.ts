@@ -163,10 +163,20 @@ export function useUpdateServico() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: ServicoUpdate }) =>
-      apiPut<Servico>(`/modules/catalogo/lpu/servicos/${id}`, data), // Rota ajustada
+      apiPut<Servico>(`/modules/catalogo/lpu/servicos/${id}`, data),
     onSuccess: (_data, { id }) => {
-      qc.invalidateQueries({ queryKey: ["catalogo-servicos"] }); // Key ajustada
-      qc.invalidateQueries({ queryKey: ["catalogo-servicos", id] }); // Key ajustada
+      qc.invalidateQueries({ queryKey: ["catalogo-servicos"] });
+      qc.invalidateQueries({ queryKey: ["catalogo-servicos", id] });
+    },
+  });
+}
+
+export function useDeleteServico() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/modules/catalogo/lpu/servicos/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["catalogo-servicos"] });
     },
   });
 }
