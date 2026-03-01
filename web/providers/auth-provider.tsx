@@ -7,7 +7,7 @@ import { getMeAction, loginAction, logoutAction } from "@/actions/auth-actions";
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: true; user: AuthUser } | { success: false; error?: string }>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -35,9 +35,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await loginAction({ email, password });
     if (result.success) {
       setUser(result.user);
-      return { success: true };
+      return { success: true as const, user: result.user };
     }
-    return { success: false, error: result.error };
+    return { success: false as const, error: result.error };
   }, []);
 
   const logout = useCallback(async () => {
