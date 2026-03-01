@@ -32,7 +32,7 @@ export default function LPUCreatePage() {
   const tenants = tenantsData?.results ?? [];
 
   // tenant efetivo: próprio do usuário ou o selecionado pelo MASTER
-  const effectiveTenantId = me?.tenant_id ?? selectedTenantId || undefined;
+  const effectiveTenantId = me?.tenant_id ?? (selectedTenantId || undefined);
 
   const createLPU = useCreateLPU(effectiveTenantId);
   const { data: partnersData } = usePartners({ per_page: 200 });
