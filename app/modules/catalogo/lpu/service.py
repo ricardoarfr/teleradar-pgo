@@ -106,6 +106,20 @@ async def update_classe(db: AsyncSession, classe_id: UUID, data: ClasseUpdate) -
     return classe
 
 
+async def delete_classe(db: AsyncSession, classe_id: UUID) -> None:
+    classe = await get_classe(db, classe_id)
+    em_uso = (await db.execute(
+        select(func.count()).select_from(Servico).where(Servico.classe_id == classe_id)
+    )).scalar()
+    if em_uso:
+        raise HTTPException(
+            status_code=409,
+            detail="Classe está vinculada a uma ou mais atividades e não pode ser excluída.",
+        )
+    await db.delete(classe)
+    await db.commit()
+
+
 # ===========================================================================
 # UNIDADE
 # ===========================================================================
@@ -178,6 +192,24 @@ async def update_unidade(db: AsyncSession, unidade_id: UUID, data: UnidadeUpdate
     await db.commit()
     await db.refresh(unidade)
     return unidade
+
+
+async def delete_unidade(db: AsyncSession, unidade_id: UUID) -> None:
+    from app.modules.catalogo.materiais.models import Material
+    unidade = await get_unidade(db, unidade_id)
+    em_uso_servico = (await db.execute(
+        select(func.count()).select_from(Servico).where(Servico.unidade_id == unidade_id)
+    )).scalar()
+    em_uso_material = (await db.execute(
+        select(func.count()).select_from(Material).where(Material.unidade_id == unidade_id)
+    )).scalar()
+    if em_uso_servico or em_uso_material:
+        raise HTTPException(
+            status_code=409,
+            detail="Unidade está vinculada a atividades ou materiais e não pode ser excluída.",
+        )
+    await db.delete(unidade)
+    await db.commit()
 
 
 # ===========================================================================

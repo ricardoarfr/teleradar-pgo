@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Box, Wrench } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BookOpen, Box, Layers, Ruler, Wrench } from "lucide-react";
 import { ScreenGuard } from "@/components/layout/screen-guard";
 
 export default function CatalogoHomePage() {
@@ -20,9 +19,7 @@ export default function CatalogoHomePage() {
         <Link href="/catalogo/lpu">
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Lista de Preços Unitários (LPU)
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Lista de Preços Unitários (LPU)</CardTitle>
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -37,9 +34,7 @@ export default function CatalogoHomePage() {
         <Link href="/catalogo/servicos">
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Atividades
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Atividades</CardTitle>
               <Wrench className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -51,12 +46,40 @@ export default function CatalogoHomePage() {
           </Card>
         </Link>
 
+        <Link href="/catalogo/classes">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Classes</CardTitle>
+              <Layers className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Gerenciar Classes</div>
+              <p className="text-xs text-muted-foreground">
+                Classificação das atividades do catálogo de serviços.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/catalogo/unidades">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Unidades</CardTitle>
+              <Ruler className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Gerenciar Unidades</div>
+              <p className="text-xs text-muted-foreground">
+                Unidades de medida usadas em atividades e materiais.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
         <Link href="/catalogo/materiais">
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Catálogo de Materiais
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Materiais</CardTitle>
               <Box className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
