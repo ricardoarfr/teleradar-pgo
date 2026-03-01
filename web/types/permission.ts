@@ -68,3 +68,18 @@ export function hasPermission(
   const modulePerm = permissions.find((p) => p.module === module);
   return modulePerm?.actions.includes(action) ?? false;
 }
+
+// --- Screen-level permissions (granular por tela) ---
+
+export interface ScreenActionSet {
+  view: boolean;
+  create: boolean;
+  edit: boolean;
+  delete: boolean;
+}
+
+/** Mapa de permissões: { screen_key → ScreenActionSet } */
+export type ScreenPermissionsMap = Record<string, ScreenActionSet>;
+
+/** Mapa completo para o painel de administração: { role → { screen_key → ScreenActionSet } } */
+export type AllProfilesPermissions = Record<string, ScreenPermissionsMap>;

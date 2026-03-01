@@ -38,7 +38,10 @@ export function LoginForm() {
     setApiError(null);
     const result = await login(data.email, data.password);
     if (result.success) {
-      router.push("/admin/users");
+      const destination = ["MASTER", "ADMIN"].includes(result.user.role)
+        ? "/admin/users"
+        : "/partners";
+      router.push(destination);
       router.refresh();
     } else {
       setApiError(result.error ?? "Erro ao realizar login.");

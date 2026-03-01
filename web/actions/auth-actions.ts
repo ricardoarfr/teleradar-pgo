@@ -91,8 +91,15 @@ export async function refreshTokens(): Promise<string | null> {
 
 export async function getMeAction(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
-  const accessToken = cookieStore.get("access_token")?.value;
-  if (!accessToken) return null;
+  let accessToken = cookieStore.get("access_token")?.value;
+
+  if (!accessToken) {
+    // access_token expirou mas pode haver refresh_token válido
+    const renewed = await refreshTokens();
+    if (!renewed) return null;
+    accessToken = renewed;
+  }
+
   return fetchMe(accessToken);
 }
 
