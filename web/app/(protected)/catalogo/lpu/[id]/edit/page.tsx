@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -11,7 +11,7 @@ import { usePartners } from "@/hooks/use-partners";
 import { toast } from "@/components/ui/use-toast";
 import type { LPUUpdate } from "@/types/catalogo";
 
-export default function LPUEditPage() {
+function LPUEditPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const lpuId = params.id as string;
@@ -87,5 +87,17 @@ export default function LPUEditPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LPUEditPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+        Carregando...
+      </div>
+    }>
+      <LPUEditPageContent />
+    </Suspense>
   );
 }

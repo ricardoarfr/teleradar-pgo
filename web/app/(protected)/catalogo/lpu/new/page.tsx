@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +15,7 @@ import { getMeAction } from "@/actions/auth-actions";
 import { toast } from "@/components/ui/use-toast";
 import type { LPUCreate } from "@/types/catalogo";
 
-export default function LPUCreatePage() {
+function LPUCreatePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [apiError, setApiError] = useState<string | null>(null);
@@ -116,5 +116,17 @@ export default function LPUCreatePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LPUCreatePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+        Carregando...
+      </div>
+    }>
+      <LPUCreatePageContent />
+    </Suspense>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -12,7 +13,7 @@ import { usePartners } from "@/hooks/use-partners";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-export default function LPUSinglePage() {
+function LPUSinglePageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const lpuId = params.id as string;
@@ -126,5 +127,19 @@ export default function LPUSinglePage() {
       <h3 className="text-xl font-semibold mb-4">Itens da LPU</h3>
       <LPUItemsTable lpuId={lpu.id} tenantId={effectiveTenantId} />
     </div>
+  );
+}
+
+export default function LPUSinglePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 space-y-4 p-8 pt-6">
+        <h2 className="text-3xl font-bold tracking-tight text-foreground">
+          Carregando LPU...
+        </h2>
+      </div>
+    }>
+      <LPUSinglePageContent />
+    </Suspense>
   );
 }
