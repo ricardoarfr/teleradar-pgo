@@ -40,8 +40,8 @@ function AddLPUItemContent() {
   const [apiError, setApiError] = useState<string | null>(null);
 
   const { data: lpu } = useLPU(lpuId, tenantId);
-  const { data: itemsData } = useLPUItems(lpuId, { per_page: 200 }, tenantId);
-  const { data: servicosData } = useServicos({ per_page: 200, ativo: true });
+  const { data: itemsData } = useLPUItems(lpuId, { per_page: 100 }, tenantId);
+  const { data: servicosData } = useServicos({ per_page: 100, ativo: true });
   const addItem = useAddLPUItem(tenantId);
 
   // Filtra serviços já adicionados nesta LPU

@@ -50,8 +50,8 @@ export function ServicoForm(props: ServicoFormProps) {
   const isCreate = props.mode === "create";
   const editServico = !isCreate ? (props as ServicoFormEditProps).servico : null;
 
-  const { data: classesData } = useClasses({ per_page: 200, ativa: true });
-  const { data: unidadesData } = useUnidades({ per_page: 200, ativa: true });
+  const { data: classesData } = useClasses({ per_page: 100, ativa: true });
+  const { data: unidadesData } = useUnidades({ per_page: 100, ativa: true });
   const classes = classesData?.results ?? [];
   const unidades = unidadesData?.results ?? [];
 
