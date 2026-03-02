@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.models import User, UserRole
 from app.database.connection import get_db
 from app.modules.contracts import schemas, service
-from app.modules.contracts.models import ContractStatus
+from app.modules.contracts.models import Contract, ContractStatus
 from app.rbac.dependencies import require_roles
 from app.utils.responses import success
 
@@ -17,6 +17,43 @@ _staff_up = require_roles(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN, User
 _manager_up = require_roles(UserRole.MANAGER, UserRole.ADMIN, UserRole.MASTER)
 
 
+def _to_response(contract: Contract) -> schemas.ContractResponse:
+    """Converts Contract ORM object to ContractResponse schema.
+
+    contract.servicos is a list of ContractServico (join table rows),
+    each with a .servico relationship to the actual Servico object.
+    We extract the Servico data to build ServicoInfo.
+    """
+    servicos = [
+        schemas.ServicoInfo(
+            id=cs.servico.id,
+            codigo=cs.servico.codigo,
+            atividade=cs.servico.atividade,
+        )
+        for cs in contract.servicos
+        if cs.servico is not None
+    ]
+    logs = [schemas.LogEntry.model_validate(log) for log in contract.logs]
+
+    return schemas.ContractResponse(
+        id=contract.id,
+        tenant_id=contract.tenant_id,
+        numero=contract.numero,
+        client_id=contract.client_id,
+        estado=contract.estado,
+        cidade=contract.cidade,
+        status=contract.status,
+        start_date=contract.start_date,
+        end_date=contract.end_date,
+        notes=contract.notes,
+        created_by=contract.created_by,
+        created_at=contract.created_at,
+        updated_at=contract.updated_at,
+        servicos=servicos,
+        logs=logs,
+    )
+
+
 @router.post("/", status_code=201)
 async def create_contract(
     data: schemas.ContractCreate,
@@ -24,7 +61,7 @@ async def create_contract(
     current_user: User = Depends(_manager_up),
 ):
     contract = await service.create_contract(db, current_user.tenant_id, current_user.id, data)
-    return success("Contrato criado.", schemas.ContractResponse.model_validate(contract))
+    return success("Contrato criado.", _to_response(contract))
 
 
 @router.get("/")
@@ -37,7 +74,7 @@ async def list_contracts(
 ):
     contracts, total = await service.list_contracts(db, current_user.tenant_id, page, per_page, status)
     return success("Lista de contratos.", {
-        "results": [schemas.ContractResponse.model_validate(c) for c in contracts],
+        "results": [_to_response(c) for c in contracts],
         "total": total,
         "page": page,
         "per_page": per_page,
@@ -51,7 +88,7 @@ async def get_contract(
     current_user: User = Depends(_staff_up),
 ):
     contract = await service.get_contract(db, current_user.tenant_id, contract_id)
-    return success("Dados do contrato.", schemas.ContractResponse.model_validate(contract))
+    return success("Dados do contrato.", _to_response(contract))
 
 
 @router.put("/{contract_id}")
@@ -64,7 +101,7 @@ async def update_contract(
     contract = await service.update_contract(
         db, current_user.tenant_id, contract_id, current_user.id, data
     )
-    return success("Contrato atualizado.", schemas.ContractResponse.model_validate(contract))
+    return success("Contrato atualizado.", _to_response(contract))
 
 
 @router.delete("/{contract_id}", status_code=204)
