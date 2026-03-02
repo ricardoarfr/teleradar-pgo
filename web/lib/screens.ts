@@ -4,6 +4,7 @@ import {
   UserCheck,
   Settings2,
   ShieldCheck,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/types/auth";
@@ -41,6 +42,20 @@ const viewCreateEdit: ScreenActionSet = { view: true, create: true, edit: true, 
  * Sem registro: a tela não aparece no controle de perfis e não é protegida.
  */
 export const SCREENS: ScreenDefinition[] = [
+  {
+    key: "contratos",
+    label: "Contratos",
+    path: "/contratos",
+    icon: FileText,
+    actions: ["view", "create", "edit", "delete"],
+    defaultPermissions: {
+      MASTER: full,
+      ADMIN: full,
+      MANAGER: full,
+      STAFF: viewOnly,
+      PARTNER: none,
+    },
+  },
   {
     key: "partners",
     label: "Parceiros",
