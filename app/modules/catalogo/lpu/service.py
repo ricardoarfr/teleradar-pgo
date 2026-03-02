@@ -239,7 +239,8 @@ async def create_servico(db: AsyncSession, data: ServicoCreate) -> Servico:
     db.add(servico)
     await db.commit()
     await db.refresh(servico)
-    return servico
+    # Re-fetch with selectinload to avoid MissingGreenlet during serialization
+    return await get_servico(db, servico.id)
 
 
 async def list_servicos(
@@ -307,8 +308,8 @@ async def update_servico(db: AsyncSession, servico_id: UUID, data: ServicoUpdate
 
     servico.updated_at = datetime.utcnow()
     await db.commit()
-    await db.refresh(servico)
-    return servico
+    # Re-fetch with selectinload to avoid MissingGreenlet during serialization
+    return await get_servico(db, servico_id)
 
 
 async def delete_servico(db: AsyncSession, servico_id: UUID) -> None:

@@ -22,7 +22,14 @@ export default function ServicoCreatePage() {
       toast({ title: "Atividade cadastrada!", description: "A atividade foi cadastrada com sucesso." });
       router.push("/catalogo/servicos");
     } catch (err: any) {
-      setApiError(err?.response?.data?.detail ?? "Erro ao cadastrar atividade. Verifique os dados.");
+      const detail = err?.response?.data?.detail;
+      if (typeof detail === "string") {
+        setApiError(detail);
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        setApiError(detail.map((e: any) => e.msg ?? String(e)).join("; "));
+      } else {
+        setApiError("Erro ao cadastrar atividade. Verifique os dados.");
+      }
     }
   };
 
