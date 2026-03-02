@@ -5,9 +5,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useMateriais, useUnidades } from "@/hooks/use-catalogo"; // Usando o novo hook useMateriais
-import { formatDate } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Plus, Search, Edit2 } from "lucide-react";
+import { useMateriais, useUnidades, useDeleteMaterial } from "@/hooks/use-catalogo";
+import { toast } from "@/components/ui/use-toast";
+import { ChevronLeft, ChevronRight, Plus, Search, Edit2, Trash2 } from "lucide-react";
 
 export function MateriaisTable() {
   const [search, setSearch] = useState("");
@@ -22,7 +22,8 @@ export function MateriaisTable() {
   };
 
   const { data, isLoading } = useMateriais(params);
-  const { data: unidadesData } = useUnidades({ per_page: 100 }); // Para exibir nome da unidade
+  const { data: unidadesData } = useUnidades({ per_page: 100 });
+  const deleteMutation = useDeleteMaterial();
 
   const materiais = data?.results ?? [];
   const total = data?.total ?? 0;
@@ -30,6 +31,20 @@ export function MateriaisTable() {
 
   const getUnidadeSigla = (id: string) => {
     return unidadesData?.results.find((u) => u.id === id)?.sigla ?? "—";
+  };
+
+  const handleDelete = async (id: string, descricao: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o material "${descricao}"?`)) return;
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast({ title: "Material excluído!", description: "O material foi removido com sucesso." });
+    } catch (err: any) {
+      toast({
+        title: "Erro ao excluir",
+        description: err?.response?.data?.detail ?? "Não foi possível excluir o material.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSearchChange = (value: string) => {
@@ -97,12 +112,21 @@ export function MateriaisTable() {
                       {material.ativo ? "Ativo" : "Inativo"}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right space-x-1">
                     <Link href={`/catalogo/materiais/${material.id}/edit`}>
-                        <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon">
                         <Edit2 className="h-4 w-4" />
-                        </Button>
+                      </Button>
                     </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(material.id, material.descricao)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </td>
                 </tr>
               ))

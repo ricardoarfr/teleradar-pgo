@@ -111,3 +111,9 @@ async def update_material(db: AsyncSession, material_id: UUID, data: MaterialUpd
     await db.commit()
     # Re-fetch with selectinload to avoid MissingGreenlet during serialization
     return await get_material(db, material_id)
+
+
+async def delete_material(db: AsyncSession, material_id: UUID) -> None:
+    material = await get_material(db, material_id)
+    await db.delete(material)
+    await db.commit()
