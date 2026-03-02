@@ -39,7 +39,8 @@ async def create_material(db: AsyncSession, data: MaterialCreate) -> Material:
     db.add(material)
     await db.commit()
     await db.refresh(material)
-    return material
+    # Re-fetch with selectinload to avoid MissingGreenlet during serialization
+    return await get_material(db, material.id)
 
 
 async def list_materiais(
@@ -108,5 +109,5 @@ async def update_material(db: AsyncSession, material_id: UUID, data: MaterialUpd
 
     material.updated_at = datetime.utcnow()
     await db.commit()
-    await db.refresh(material)
-    return material
+    # Re-fetch with selectinload to avoid MissingGreenlet during serialization
+    return await get_material(db, material_id)

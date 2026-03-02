@@ -22,7 +22,7 @@ _admin_up = require_roles(UserRole.ADMIN, UserRole.MASTER)
 # MATERIAL
 # ===========================================================================
 
-@router.post("/materiais", status_code=201, tags=["Catalogo: Materiais"])
+@router.post("/", status_code=201, tags=["Catalogo: Materiais"])
 async def create_material(
     data: schemas.MaterialCreate,
     db: AsyncSession = Depends(get_db),
@@ -32,7 +32,7 @@ async def create_material(
     return success("Material criado.", schemas.MaterialResponse.model_validate(material))
 
 
-@router.get("/materiais", tags=["Catalogo: Materiais"])
+@router.get("/", tags=["Catalogo: Materiais"])
 async def list_materiais(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -50,7 +50,7 @@ async def list_materiais(
     })
 
 
-@router.get("/materiais/{material_id}", tags=["Catalogo: Materiais"])
+@router.get("/{material_id}", tags=["Catalogo: Materiais"])
 async def get_material(
     material_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -60,7 +60,7 @@ async def get_material(
     return success("Dados do material.", schemas.MaterialResponse.model_validate(material))
 
 
-@router.put("/materiais/{material_id}", tags=["Catalogo: Materiais"])
+@router.put("/{material_id}", tags=["Catalogo: Materiais"])
 async def update_material(
     material_id: UUID,
     data: schemas.MaterialUpdate,
