@@ -31,8 +31,10 @@ export default function EditarContratoPage() {
         setApiError(detail);
       } else if (Array.isArray(detail) && detail.length > 0) {
         setApiError(detail.map((e: any) => e.msg ?? String(e)).join("; "));
+      } else if (err?.response?.status) {
+        setApiError(`Erro ${err.response.status}: ${err?.response?.statusText ?? "Falha ao atualizar contrato."}`);
       } else {
-        setApiError("Erro ao atualizar contrato. Verifique os dados.");
+        setApiError("Erro ao atualizar contrato. Verifique os dados e tente novamente.");
       }
     }
   };
