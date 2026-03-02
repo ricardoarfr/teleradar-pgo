@@ -27,7 +27,7 @@ function LPUSinglePageContent() {
   const { data: partnersData, isLoading: isLoadingPartners } = usePartners({ per_page: 100 });
 
   const getPartnerName = (id: string) => {
-    return partnersData?.results.find((p) => p.id === id)?.name ?? "Carregando...";
+    return partnersData?.results.find((p) => p.profile_id === id)?.name ?? "Parceiro não encontrado";
   };
 
   // tenant efetivo para operações de escrita: preferir o do LPU carregado, senão o da URL
