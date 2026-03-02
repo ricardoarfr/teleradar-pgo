@@ -71,7 +71,14 @@ function AddLPUItemContent() {
       toast({ title: "Item adicionado!", description: "O item foi adicionado à LPU." });
       router.push(backHref);
     } catch (err: any) {
-      setApiError(err?.response?.data?.detail ?? "Erro ao adicionar item.");
+      const detail = err?.response?.data?.detail;
+      if (typeof detail === "string") {
+        setApiError(detail);
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        setApiError(detail.map((e: any) => e.msg ?? String(e)).join("; "));
+      } else {
+        setApiError("Erro ao adicionar item.");
+      }
     }
   };
 
@@ -134,7 +141,7 @@ function AddLPUItemContent() {
                   type="number"
                   step="0.01"
                   min="0"
-                  placeholder="0,00"
+                  placeholder="0.00"
                   {...register("valor_unitario")}
                 />
                 {errors.valor_unitario && (

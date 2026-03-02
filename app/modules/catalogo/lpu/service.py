@@ -468,7 +468,8 @@ async def add_item_lpu(
     db.add(item)
     await db.commit()
     await db.refresh(item)
-    return item
+    # Re-fetch with selectinload to avoid MissingGreenlet during serialization
+    return await get_item_lpu(db, tenant_id, lpu_id, item.id)
 
 
 async def list_itens_lpu(
@@ -534,8 +535,8 @@ async def update_item_lpu(
 
     item.updated_at = datetime.utcnow()
     await db.commit()
-    await db.refresh(item)
-    return item
+    # Re-fetch with selectinload to avoid MissingGreenlet during serialization
+    return await get_item_lpu(db, tenant_id, lpu_id, item_id)
 
 
 async def delete_lpu(
