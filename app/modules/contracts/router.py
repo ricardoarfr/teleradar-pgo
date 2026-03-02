@@ -23,7 +23,7 @@ async def create_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    contract = await service.create_contract(db, current_user.tenant_id, data)
+    contract = await service.create_contract(db, current_user.tenant_id, current_user.id, data)
     return success("Contrato criado.", schemas.ContractResponse.model_validate(contract))
 
 
@@ -61,15 +61,16 @@ async def update_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    contract = await service.update_contract(db, current_user.tenant_id, contract_id, data)
+    contract = await service.update_contract(
+        db, current_user.tenant_id, contract_id, current_user.id, data
+    )
     return success("Contrato atualizado.", schemas.ContractResponse.model_validate(contract))
 
 
-@router.post("/{contract_id}/cancel")
-async def cancel_contract(
+@router.delete("/{contract_id}", status_code=204)
+async def delete_contract(
     contract_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    contract = await service.cancel_contract(db, current_user.tenant_id, contract_id)
-    return success("Contrato cancelado.", schemas.ContractResponse.model_validate(contract))
+    await service.delete_contract(db, current_user.tenant_id, contract_id, current_user.id)
