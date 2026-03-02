@@ -411,3 +411,13 @@ export function useUpdateMaterial() {
     },
   });
 }
+
+export function useDeleteMaterial() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/modules/catalogo/materiais/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["catalogo-materiais"] });
+    },
+  });
+}

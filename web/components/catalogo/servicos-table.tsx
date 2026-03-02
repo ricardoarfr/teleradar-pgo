@@ -5,9 +5,9 @@ import Link from "next/link"; // Ensure Link is imported here
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useServicos, useClasses, useUnidades } from "@/hooks/use-catalogo";
-import { formatDate } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Plus, Search, Edit2 } from "lucide-react";
+import { useServicos, useClasses, useUnidades, useDeleteServico } from "@/hooks/use-catalogo";
+import { toast } from "@/components/ui/use-toast";
+import { ChevronLeft, ChevronRight, Plus, Search, Edit2, Trash2 } from "lucide-react";
 
 export function ServicosTable() {
   const [search, setSearch] = useState("");
@@ -24,6 +24,7 @@ export function ServicosTable() {
   const { data, isLoading } = useServicos(params);
   const { data: classesData } = useClasses({ per_page: 100 });
   const { data: unidadesData } = useUnidades({ per_page: 100 });
+  const deleteMutation = useDeleteServico();
 
   const servicos = data?.results ?? [];
   const total = data?.total ?? 0;
@@ -35,6 +36,20 @@ export function ServicosTable() {
 
   const getUnidadeSigla = (id: string) => {
     return unidadesData?.results.find((u) => u.id === id)?.sigla ?? "—";
+  };
+
+  const handleDelete = async (id: string, atividade: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a atividade "${atividade}"?\n\nNão será possível excluir se estiver vinculada a alguma LPU.`)) return;
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast({ title: "Atividade excluída!", description: "A atividade foi removida com sucesso." });
+    } catch (err: any) {
+      toast({
+        title: "Erro ao excluir",
+        description: err?.response?.data?.detail ?? "Não foi possível excluir a atividade.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSearchChange = (value: string) => {
@@ -59,11 +74,11 @@ export function ServicosTable() {
           />
         </div>
 
-        <Link href="/catalog/servicos/new">
-            <Button size="sm">
+        <Link href="/catalogo/servicos/new">
+          <Button size="sm">
             <Plus className="h-4 w-4" />
             Novo Serviço
-            </Button>
+          </Button>
         </Link>
       </div>
 
@@ -104,12 +119,21 @@ export function ServicosTable() {
                       {servico.ativo ? "Ativo" : "Inativo"}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link href={`/catalog/servicos/${servico.id}/edit`}>
-                        <Button variant="ghost" size="icon">
+                  <td className="px-4 py-3 text-right space-x-1">
+                    <Link href={`/catalogo/servicos/${servico.id}/edit`}>
+                      <Button variant="ghost" size="icon">
                         <Edit2 className="h-4 w-4" />
-                        </Button>
+                      </Button>
                     </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(servico.id, servico.atividade)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </td>
                 </tr>
               ))

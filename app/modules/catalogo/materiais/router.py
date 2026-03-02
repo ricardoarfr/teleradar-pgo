@@ -69,3 +69,12 @@ async def update_material(
 ):
     material = await crud.update_material(db, material_id, data)
     return success("Material atualizado.", schemas.MaterialResponse.model_validate(material))
+
+
+@router.delete("/{material_id}", status_code=204, tags=["Catalogo: Materiais"])
+async def delete_material(
+    material_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(_admin_up),
+):
+    await crud.delete_material(db, material_id)
