@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link"; // Ensure Link is imported here
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useClasses } from "@/hooks/use-catalogo";
+import { useClasses, useDeleteClasse } from "@/hooks/use-catalogo";
 import { formatDate } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Plus, Search, Edit2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit2, Plus, Search, Trash2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 export function ClassesTable() {
   const [search, setSearch] = useState("");
@@ -22,6 +23,7 @@ export function ClassesTable() {
   };
 
   const { data, isLoading } = useClasses(params);
+  const deleteMutation = useDeleteClasse();
 
   const classes = data?.results ?? [];
   const total = data?.total ?? 0;
@@ -34,6 +36,20 @@ export function ClassesTable() {
       setDebouncedSearch(value);
       setPage(1);
     }, 400);
+  };
+
+  const handleDelete = async (id: string, nome: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a classe "${nome}"?`)) return;
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast({ title: "Classe excluída!", description: "A classe foi removida com sucesso." });
+    } catch (err: any) {
+      toast({
+        title: "Erro ao excluir",
+        description: err?.response?.data?.detail ?? "Não foi possível excluir a classe.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -49,10 +65,10 @@ export function ClassesTable() {
           />
         </div>
 
-        <Link href="/catalog/classes/new">
+        <Link href="/catalogo/classes/new">
           <Button size="sm">
             <Plus className="h-4 w-4" />
-            Nova Classe
+            Nova classe
           </Button>
         </Link>
       </div>
@@ -89,19 +105,31 @@ export function ClassesTable() {
                     {classe.descricao ?? "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={classe.ativa ? "outline" : "secondary"} className={classe.ativa ? "text-green-600 bg-green-50 border-green-200" : ""}>
+                    <Badge
+                      variant={classe.ativa ? "outline" : "secondary"}
+                      className={classe.ativa ? "text-green-600 bg-green-50 border-green-200" : ""}
+                    >
                       {classe.ativa ? "Ativa" : "Inativa"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {formatDate(classe.created_at)}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link href={`/catalog/classes/${classe.id}/edit`}>
+                  <td className="px-4 py-3 text-right space-x-1">
+                    <Link href={`/catalogo/classes/${classe.id}/edit`}>
                       <Button variant="ghost" size="icon">
                         <Edit2 className="h-4 w-4" />
                       </Button>
                     </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(classe.id, classe.nome)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </td>
                 </tr>
               ))
@@ -124,9 +152,7 @@ export function ClassesTable() {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm">
-              {page} / {totalPages}
-            </span>
+            <span className="text-sm">{page} / {totalPages}</span>
             <Button
               variant="outline"
               size="icon"

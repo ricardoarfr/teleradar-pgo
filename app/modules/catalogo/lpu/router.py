@@ -99,6 +99,15 @@ async def update_classe(
     return success("Classe atualizada.", schemas.ClasseResponse.model_validate(classe))
 
 
+@router.delete("/classes/{classe_id}", status_code=204, tags=["LPU: Classes"])
+async def delete_classe(
+    classe_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(_admin_up),
+):
+    await service.delete_classe(db, classe_id)
+
+
 # ===========================================================================
 # UNIDADE
 # ===========================================================================
@@ -149,6 +158,15 @@ async def update_unidade(
 ):
     unidade = await service.update_unidade(db, unidade_id, data)
     return success("Unidade atualizada.", schemas.UnidadeResponse.model_validate(unidade))
+
+
+@router.delete("/unidades/{unidade_id}", status_code=204, tags=["LPU: Unidades"])
+async def delete_unidade(
+    unidade_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(_admin_up),
+):
+    await service.delete_unidade(db, unidade_id)
 
 
 # ===========================================================================

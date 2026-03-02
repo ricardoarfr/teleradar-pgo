@@ -63,10 +63,20 @@ export function useUpdateClasse() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: ClasseUpdate }) =>
-      apiPut<Classe>(`/modules/catalogo/lpu/classes/${id}`, data), // Rota ajustada
+      apiPut<Classe>(`/modules/catalogo/lpu/classes/${id}`, data),
     onSuccess: (_data, { id }) => {
-      qc.invalidateQueries({ queryKey: ["catalogo-classes"] }); // Key ajustada
-      qc.invalidateQueries({ queryKey: ["catalogo-classes", id] }); // Key ajustada
+      qc.invalidateQueries({ queryKey: ["catalogo-classes"] });
+      qc.invalidateQueries({ queryKey: ["catalogo-classes", id] });
+    },
+  });
+}
+
+export function useDeleteClasse() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/modules/catalogo/lpu/classes/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["catalogo-classes"] });
     },
   });
 }
@@ -112,10 +122,20 @@ export function useUpdateUnidade() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UnidadeUpdate }) =>
-      apiPut<Unidade>(`/modules/catalogo/lpu/unidades/${id}`, data), // Rota ajustada
+      apiPut<Unidade>(`/modules/catalogo/lpu/unidades/${id}`, data),
     onSuccess: (_data, { id }) => {
-      qc.invalidateQueries({ queryKey: ["catalogo-unidades"] }); // Key ajustada
-      qc.invalidateQueries({ queryKey: ["catalogo-unidades", id] }); // Key ajustada
+      qc.invalidateQueries({ queryKey: ["catalogo-unidades"] });
+      qc.invalidateQueries({ queryKey: ["catalogo-unidades", id] });
+    },
+  });
+}
+
+export function useDeleteUnidade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/modules/catalogo/lpu/unidades/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["catalogo-unidades"] });
     },
   });
 }
