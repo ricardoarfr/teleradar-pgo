@@ -26,7 +26,14 @@ export default function ServicoEditPage() {
       toast({ title: "Atividade atualizada!", description: "As alterações foram salvas com sucesso." });
       router.push("/catalogo/servicos");
     } catch (err: any) {
-      setApiError(err?.response?.data?.detail ?? "Erro ao atualizar atividade. Verifique os dados.");
+      const detail = err?.response?.data?.detail;
+      if (typeof detail === "string") {
+        setApiError(detail);
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        setApiError(detail.map((e: any) => e.msg ?? String(e)).join("; "));
+      } else {
+        setApiError("Erro ao atualizar atividade. Verifique os dados.");
+      }
     }
   };
 
