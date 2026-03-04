@@ -95,7 +95,7 @@ export function useRelatorioAtividades(params: RelAtividadesParams | null) {
   return useQuery({
     queryKey: ["produttivo-rel-atividades", params],
     queryFn: () =>
-      apiGet<RelAtividadesResult>(`${PREFIX}/relatorio/atividades`, params as Record<string, unknown>),
+      apiGet<RelAtividadesResult>(`${PREFIX}/relatorio/atividades`, params as unknown as Record<string, unknown>),
     enabled: !!params,
   });
 }
@@ -113,7 +113,7 @@ export function useRelatorioUsuario(params: RelUsuarioParams | null) {
   return useQuery({
     queryKey: ["produttivo-rel-usuario", params],
     queryFn: () =>
-      apiGet<RelUsuarioResult>(`${PREFIX}/relatorio/usuario`, params as Record<string, unknown>),
+      apiGet<RelUsuarioResult>(`${PREFIX}/relatorio/usuario`, params as unknown as Record<string, unknown>),
     enabled: !!params,
   });
 }
