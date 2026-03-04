@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle, AlertCircle, Loader2, Wand2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +14,11 @@ import {
   useSaveCookie,
   useSaveAccountId,
   useValidateCookie,
+  streamGerarCookie,
 } from "@/hooks/use-produttivo";
 
 export default function ProduttivoConfigPage() {
-  const { data: config, isLoading } = useProduttivoConfig();
+  const { data: config, isLoading, refetch: refetchConfig } = useProduttivoConfig();
   const saveCookie = useSaveCookie();
   const saveAccountId = useSaveAccountId();
   const validateCookie = useValidateCookie();
@@ -25,6 +26,13 @@ export default function ProduttivoConfigPage() {
   const [cookie, setCookie] = useState("");
   const [accountId, setAccountId] = useState("");
   const [validationResult, setValidationResult] = useState<boolean | null>(null);
+
+  // Auto-generate state
+  const [autoEmail, setAutoEmail] = useState("");
+  const [autoSenha, setAutoSenha] = useState("");
+  const [autoProgress, setAutoProgress] = useState(0);
+  const [autoMsg, setAutoMsg] = useState("");
+  const [autoRunning, setAutoRunning] = useState(false);
 
   const handleSaveCookie = async () => {
     if (!cookie.trim()) return;
@@ -46,6 +54,33 @@ export default function ProduttivoConfigPage() {
       toast({ title: "Account ID salvo!" });
     } catch {
       toast({ title: "Erro ao salvar Account ID", variant: "destructive" });
+    }
+  };
+
+  const handleGerarCookie = async () => {
+    if (!autoEmail.trim() || !autoSenha.trim()) return;
+    setAutoRunning(true);
+    setAutoProgress(0);
+    setAutoMsg("Iniciando...");
+    try {
+      for await (const evento of streamGerarCookie(autoEmail.trim(), autoSenha.trim())) {
+        setAutoProgress(evento.pct);
+        setAutoMsg(evento.msg);
+        if (evento.status === "done") {
+          toast({ title: "Cookie gerado!", description: "Sessão capturada e salva automaticamente." });
+          setAutoSenha("");
+          refetchConfig();
+          break;
+        }
+        if (evento.status === "error") {
+          toast({ title: "Erro ao gerar cookie", description: evento.msg, variant: "destructive" });
+          break;
+        }
+      }
+    } catch (err) {
+      toast({ title: "Erro de comunicação", description: String(err), variant: "destructive" });
+    } finally {
+      setAutoRunning(false);
     }
   };
 
@@ -156,10 +191,70 @@ export default function ProduttivoConfigPage() {
           </CardContent>
         </Card>
 
-        {/* Cookie */}
+        {/* Auto-generate cookie */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Cookie de Sessão</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wand2 className="h-4 w-4" />
+              Gerar Cookie Automaticamente
+            </CardTitle>
+            <CardDescription>
+              Informe as credenciais do Produttivo. O sistema fará o login automaticamente e capturará o cookie de sessão.
+              A senha não é armazenada.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="auto-email">E-mail</Label>
+              <Input
+                id="auto-email"
+                type="email"
+                placeholder={config?.produttivo_email ?? "usuario@empresa.com"}
+                value={autoEmail}
+                onChange={(e) => setAutoEmail(e.target.value)}
+                disabled={autoRunning}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="auto-senha">Senha</Label>
+              <Input
+                id="auto-senha"
+                type="password"
+                placeholder="••••••••"
+                value={autoSenha}
+                onChange={(e) => setAutoSenha(e.target.value)}
+                disabled={autoRunning}
+              />
+            </div>
+            {autoRunning && (
+              <div className="space-y-1">
+                <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${autoProgress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">{autoMsg}</p>
+              </div>
+            )}
+            <Button
+              size="sm"
+              onClick={handleGerarCookie}
+              disabled={!autoEmail.trim() || !autoSenha.trim() || autoRunning}
+            >
+              {autoRunning ? (
+                <><Loader2 className="h-3 w-3 mr-2 animate-spin" />Gerando...</>
+              ) : (
+                <><Wand2 className="h-3 w-3 mr-2" />Gerar Cookie</>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Cookie manual */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Cookie de Sessão (Manual)</CardTitle>
             <CardDescription>
               Cole aqui o valor do cookie <code className="text-xs bg-muted px-1 py-0.5 rounded">_produttivo_session</code> obtido
               ao fazer login em <strong>app.produttivo.com.br</strong>. Abra o DevTools → Application → Cookies para copiar o valor.

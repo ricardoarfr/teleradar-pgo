@@ -1,3 +1,5 @@
+import io
+import json
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -15,8 +17,6 @@ from app.modules.produttivo.reports.atividades_usuario import gerar_relatorio_us
 from app.rbac.dependencies import require_roles
 from app.utils.responses import success
 from pydantic import BaseModel
-
-import io
 
 router = APIRouter()
 
@@ -70,6 +70,80 @@ async def validate_cookie(
     if not valid:
         return success("Cookie inválido ou expirado.", {"valid": False})
     return success("Cookie válido.", {"valid": True})
+
+
+class GerarCookiePayload(BaseModel):
+    email: str
+    senha: str
+
+
+@router.post("/config/gerar-cookie")
+async def gerar_cookie_automatico(
+    payload: GerarCookiePayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_manager_up),
+):
+    """
+    Faz login no Produttivo via Playwright headless, captura o cookie de sessão
+    e o salva automaticamente no banco. Retorna progresso via SSE.
+
+    Formato de cada evento:
+    data: {"pct": 0-100, "msg": "...", "status": "running|done|error", "cookie": null|"..."}
+    """
+    tenant_id = current_user.tenant_id
+
+    async def stream_gen():
+        from playwright.async_api import async_playwright
+
+        def evento(pct: int, msg: str, status: str = "running", cookie: str | None = None) -> str:
+            return f"data: {json.dumps({'pct': pct, 'msg': msg, 'status': status, 'cookie': cookie}, ensure_ascii=False)}\n\n"
+
+        async with async_playwright() as p:
+            try:
+                yield evento(5, "Iniciando navegador...")
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=["--no-sandbox", "--disable-setuid-sandbox"],
+                )
+                context = await browser.new_context()
+                page = await context.new_page()
+
+                yield evento(15, "Abrindo página de login...")
+                await page.goto(
+                    "https://app.produttivo.com.br/users/sign_in", timeout=30000
+                )
+
+                yield evento(30, "Preenchendo credenciais...")
+                await page.fill('input[name="user[email]"]', payload.email)
+                await page.fill('input[name="user[password]"]', payload.senha)
+
+                yield evento(50, "Enviando login...")
+                await page.click('input[type="submit"]')
+
+                await page.wait_for_url("**/dashboard**", timeout=15000)
+
+                yield evento(75, "Capturando cookie de sessão...")
+                cookies = await context.cookies()
+                cookie_value = next(
+                    (c["value"] for c in cookies if c["name"] == "_produttivo_session"),
+                    None,
+                )
+                await browser.close()
+
+                if cookie_value:
+                    await config_crud.save_cookie(db, tenant_id, cookie_value)
+                    yield evento(100, "Cookie capturado e salvo com sucesso!", "done", cookie_value)
+                else:
+                    yield evento(0, "Cookie não encontrado após login.", "error")
+
+            except Exception as exc:
+                yield evento(0, f"Erro: {exc}", "error")
+
+    return StreamingResponse(
+        stream_gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/config/account")

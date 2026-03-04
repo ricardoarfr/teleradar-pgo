@@ -119,6 +119,63 @@ export function useRelatorioUsuario(params: RelUsuarioParams | null) {
 }
 
 // ---------------------------------------------------------------------------
+// Automatic cookie generation via SSE stream
+// ---------------------------------------------------------------------------
+
+export interface GerarCookieEvento {
+  pct: number;
+  msg: string;
+  status: "running" | "done" | "error";
+  cookie?: string | null;
+}
+
+export async function* streamGerarCookie(
+  email: string,
+  senha: string
+): AsyncGenerator<GerarCookieEvento> {
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL ?? "https://teleradar-pgo-api.onrender.com";
+
+  const tokenMatch =
+    typeof document !== "undefined"
+      ? document.cookie.match(/(?:^|;\s*)access_token=([^;]+)/)
+      : null;
+  const token = tokenMatch ? decodeURIComponent(tokenMatch[1]) : null;
+
+  const res = await fetch(`${API_URL}${PREFIX}/config/gerar-cookie`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    credentials: "include",
+    body: JSON.stringify({ email, senha }),
+  });
+
+  if (!res.ok || !res.body) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        yield JSON.parse(line.slice(6)) as GerarCookieEvento;
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Excel downloads (direct URL with auth header handled via axios)
 // ---------------------------------------------------------------------------
 
