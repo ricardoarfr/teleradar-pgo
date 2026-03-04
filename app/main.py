@@ -54,6 +54,7 @@ from app.modules.reports.router import router as reports_router
 from app.modules.partners.router import router as partners_router
 from app.modules.catalogo import router as catalogo_router
 from app.rbac.router import router as profiles_router
+from app.modules.produttivo.router import router as produttivo_router
 
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
@@ -68,6 +69,7 @@ app.include_router(reports_router, prefix="/modules/reports", tags=["Módulo: Re
 app.include_router(partners_router, prefix="/admin/partners", tags=["Parceiros"])
 app.include_router(catalogo_router, prefix="/modules/catalogo", tags=["Módulo: Catálogo"])
 app.include_router(profiles_router, prefix="/admin/profiles", tags=["Perfis de Acesso"])
+app.include_router(produttivo_router, prefix="/modules/produttivo", tags=["Módulo: Produttivo"])
 
 
 @app.get("/health", tags=["Health"])
