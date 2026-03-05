@@ -76,7 +76,7 @@ class UserProfile(BaseModel):
 class AccountMember(BaseModel):
     id: int
     user_id: int
-    status: Optional[Any] = None  # Produttivo may return int (1/0) or string
+    status: str = "active"  # API always returns "active" or "inactive" (string)
     member_role: Optional[str] = None
     user: Optional[UserProfile] = None
 
