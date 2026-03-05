@@ -48,32 +48,30 @@ async def validate_cookie(cookie: str, account_id: str) -> bool:
 async def buscar_todos_usuarios(
     cookie: str, account_id: str, include_inactive: bool = False
 ) -> list[AccountMember]:
-    """Fetches account members. By default only active; pass include_inactive=True for all.
+    """Fetches account members.
 
-    NOTE: Client-side status filtering is intentionally omitted here because the Produttivo
-    API may return status as a numeric value (e.g. 1/0) or non-"active" string, which would
-    cause a hardcoded `status == "active"` check to silently drop valid members.
-    The `include_inactive` param is forwarded to the API directly; the router exposes the raw
-    status field so callers can observe the actual values and implement UI-level filtering.
+    /account_members does NOT support per_page or actives params (not in API docs).
+    Pagination is driven by meta.total_pages only.
+    Status filter is applied client-side (swagger confirms status is the string "active").
     """
     members: list[AccountMember] = []
     page = 1
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         while True:
-            params: dict = {"account_id": account_id, "per_page": 100, "page": page}
-            if not include_inactive:
-                params["actives"] = "true"
             r = await client.get(
                 f"{BASE_URL}/account_members",
                 headers=_build_headers(cookie),
-                params=params,
+                params={"account_id": account_id, "page": page},
             )
             _raise_for_produttivo(r)
             data = r.json()
             results = data.get("results", [])
-            members.extend(AccountMember(**m) for m in results)
+            for m in results:
+                member = AccountMember(**m)
+                if include_inactive or member.status == "active":
+                    members.append(member)
             meta = PaginationMeta(**data.get("meta", {}))
-            if page >= meta.total_pages or len(results) < 100:
+            if page >= meta.total_pages:
                 break
             page += 1
     return members
@@ -82,25 +80,29 @@ async def buscar_todos_usuarios(
 async def buscar_todos_formularios(
     cookie: str, account_id: str, include_inactive: bool = False
 ) -> list[Form]:
-    """Fetches forms. By default only active; pass include_inactive=True for all."""
+    """Fetches forms.
+
+    /forms supports the 'actives' boolean param for server-side filtering,
+    but does NOT support per_page. Pagination is driven by meta.total_pages only.
+    """
     forms: list[Form] = []
     page = 1
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         while True:
+            params: dict = {"account_id": account_id, "page": page}
+            if not include_inactive:
+                params["actives"] = "true"
             r = await client.get(
                 f"{BASE_URL}/forms.json",
                 headers=_build_headers(cookie),
-                params={"account_id": account_id, "per_page": 100, "page": page},
+                params=params,
             )
             _raise_for_produttivo(r)
             data = r.json()
             results = data.get("results", [])
-            for f in results:
-                form = Form(**f)
-                if include_inactive or form.status == "active":
-                    forms.append(form)
+            forms.extend(Form(**f) for f in results)
             meta = PaginationMeta(**data.get("meta", {}))
-            if page >= meta.total_pages or len(results) < 100:
+            if page >= meta.total_pages:
                 break
             page += 1
     return forms
