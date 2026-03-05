@@ -49,13 +49,20 @@ async def buscar_todos_usuarios(
     cookie: str, account_id: str, include_inactive: bool = False
 ) -> list[AccountMember]:
     """Fetches account members. By default only active; pass include_inactive=True for all.
-    Status filtering is done client-side to avoid API inconsistencies.
+
+    NOTE: Client-side status filtering is intentionally omitted here because the Produttivo
+    API may return status as a numeric value (e.g. 1/0) or non-"active" string, which would
+    cause a hardcoded `status == "active"` check to silently drop valid members.
+    The `include_inactive` param is forwarded to the API directly; the router exposes the raw
+    status field so callers can observe the actual values and implement UI-level filtering.
     """
     members: list[AccountMember] = []
     page = 1
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         while True:
             params: dict = {"account_id": account_id, "per_page": 100, "page": page}
+            if not include_inactive:
+                params["actives"] = "true"
             r = await client.get(
                 f"{BASE_URL}/account_members",
                 headers=_build_headers(cookie),
@@ -64,10 +71,7 @@ async def buscar_todos_usuarios(
             _raise_for_produttivo(r)
             data = r.json()
             results = data.get("results", [])
-            for m in results:
-                member = AccountMember(**m)
-                if include_inactive or member.status == "active":
-                    members.append(member)
+            members.extend(AccountMember(**m) for m in results)
             meta = PaginationMeta(**data.get("meta", {}))
             if page >= meta.total_pages or len(results) < 100:
                 break
