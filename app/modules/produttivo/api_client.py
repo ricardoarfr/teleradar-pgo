@@ -109,25 +109,32 @@ async def buscar_todos_formularios(
 
 
 async def buscar_works_por_form(cookie: str, account_id: str, form_ids: list[int]) -> list[Work]:
-    """Fetches all works for given form_ids (without pagination)."""
+    """Fetches all works for the given form_ids with pagination.
+
+    Only uses params documented in the Produttivo swagger (/works GET).
+    """
+    works: list[Work] = []
+    page = 1
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-        params: dict = {
-            "account_id": account_id,
-            "actives": "true",
-            "work_type": 1,
-            "without_pagination": "true",
-            "include_team_works": "true",
-            "order_filter_param": "true",
-        }
-        # httpx handles repeated keys via a list of tuples
-        query_params = list(params.items())
-        for fid in form_ids:
-            query_params.append(("form_ids[]", fid))
-        r = await client.get(f"{BASE_URL}/works", headers=_build_headers(cookie), params=query_params)
-        _raise_for_produttivo(r)
-        data = r.json()
-        results = data.get("results", data if isinstance(data, list) else [])
-        return [Work(**w) for w in results]
+        while True:
+            base_params = [
+                ("account_id", account_id),
+                ("actives", "true"),
+                ("include_team_works", "true"),
+                ("page", page),
+            ]
+            for fid in form_ids:
+                base_params.append(("form_ids[]", fid))
+            r = await client.get(f"{BASE_URL}/works", headers=_build_headers(cookie), params=base_params)
+            _raise_for_produttivo(r)
+            data = r.json()
+            results = data.get("results", data if isinstance(data, list) else [])
+            works.extend(Work(**w) for w in results)
+            meta = PaginationMeta(**data.get("meta", {}))
+            if page >= meta.total_pages:
+                break
+            page += 1
+    return works
 
 
 async def buscar_resource_places(

@@ -1,10 +1,13 @@
 import io
 import json
+import logging
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -321,13 +324,19 @@ async def relatorio_usuario(
         ids = [int(i.strip()) for i in s.split(",") if i.strip().isdigit()]
         return ids if ids else None
 
-    resultado = await gerar_relatorio_usuario(
-        config.cookie, config.account_id, data_inicio, data_fim,
-        user_ids=_parse_ids(user_ids),
-        form_ids=_parse_ids(form_ids),
-        resource_place_ids=_parse_ids(resource_place_ids),
-        work_ids=_parse_ids(work_ids),
-    )
+    try:
+        resultado = await gerar_relatorio_usuario(
+            config.cookie, config.account_id, data_inicio, data_fim,
+            user_ids=_parse_ids(user_ids),
+            form_ids=_parse_ids(form_ids),
+            resource_place_ids=_parse_ids(resource_place_ids),
+            work_ids=_parse_ids(work_ids),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Erro inesperado em gerar_relatorio_usuario: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Erro interno ao gerar relatório: {exc}") from exc
     return success("Relatório por usuário.", resultado)
 
 

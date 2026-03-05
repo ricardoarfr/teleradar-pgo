@@ -446,9 +446,14 @@ export default function RelatorioUsuarioPage() {
         )}
 
         {error && (
-          <div className="rounded-md bg-destructive/10 border border-destructive/30 p-4 text-sm text-destructive">
-            Erro ao consultar. Verifique se o cookie está configurado e válido.{" "}
-            <Link href="/produttivo/configuracoes" className="underline">Configurações</Link>
+          <div className="rounded-md bg-destructive/10 border border-destructive/30 p-4 text-sm text-destructive space-y-1">
+            <p className="font-medium">Erro ao consultar o relatório.</p>
+            <p>
+              {(error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+                ?? (error as Error)?.message
+                ?? "Erro desconhecido. Verifique o cookie nas"}{" "}
+              <Link href="/produttivo/configuracoes" className="underline">Configurações</Link>.
+            </p>
           </div>
         )}
 
