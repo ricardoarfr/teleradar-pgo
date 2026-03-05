@@ -91,6 +91,11 @@ async def gerar_cookie_automatico(
     data: {"pct": 0-100, "msg": "...", "status": "running|done|error", "cookie": null|"..."}
     """
     tenant_id = current_user.tenant_id
+    if tenant_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não está associado a nenhuma empresa.",
+        )
 
     async def stream_gen():
         from playwright.async_api import async_playwright
@@ -98,46 +103,82 @@ async def gerar_cookie_automatico(
         def evento(pct: int, msg: str, status: str = "running", cookie: str | None = None) -> str:
             return f"data: {json.dumps({'pct': pct, 'msg': msg, 'status': status, 'cookie': cookie}, ensure_ascii=False)}\n\n"
 
-        async with async_playwright() as p:
-            try:
-                yield evento(5, "Iniciando navegador...")
+        browser = None
+        try:
+            yield evento(5, "Iniciando navegador...")
+            async with async_playwright() as p:
                 browser = await p.chromium.launch(
                     headless=True,
-                    args=["--no-sandbox", "--disable-setuid-sandbox"],
+                    args=[
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--single-process",
+                        "--disable-setuid-sandbox",
+                    ],
                 )
-                context = await browser.new_context()
+                yield evento(15, "Browser iniciado. Criando contexto...")
+                context = await browser.new_context(
+                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                )
+                context.set_default_timeout(60000)
                 page = await context.new_page()
 
-                yield evento(15, "Abrindo página de login...")
+                yield evento(25, "Abrindo página de login...")
                 await page.goto(
-                    "https://app.produttivo.com.br/users/sign_in", timeout=30000
+                    "https://app.produttivo.com.br/auth/sign_in",
+                    wait_until="domcontentloaded",
+                    timeout=60000,
                 )
 
-                yield evento(30, "Preenchendo credenciais...")
-                await page.fill('input[name="user[email]"]', payload.email)
-                await page.fill('input[name="user[password]"]', payload.senha)
+                yield evento(40, "Preenchendo e-mail...")
+                await page.wait_for_selector(
+                    'input[type="email"], input[name="email"]', timeout=30000
+                )
+                await page.fill('input[type="email"], input[name="email"]', payload.email)
 
-                yield evento(50, "Enviando login...")
-                await page.click('input[type="submit"]')
+                yield evento(50, "Preenchendo senha...")
+                await page.fill('input[type="password"]', payload.senha)
 
-                await page.wait_for_url("**/dashboard**", timeout=15000)
+                yield evento(60, "Enviando credenciais...")
+                try:
+                    await page.click('button:has-text("Login")', timeout=5000)
+                except Exception:
+                    try:
+                        await page.click('button[type="submit"]', timeout=5000)
+                    except Exception:
+                        await page.press('input[type="password"]', "Enter")
 
-                yield evento(75, "Capturando cookie de sessão...")
+                yield evento(70, "Aguardando autenticação...")
+                await page.wait_for_timeout(4000)
+
+                yield evento(80, "Capturando cookie de sessão...")
+                await page.wait_for_timeout(2000)
+
+                url_atual = page.url
                 cookies = await context.cookies()
                 cookie_value = next(
                     (c["value"] for c in cookies if c["name"] == "_produttivo_session"),
                     None,
                 )
                 await browser.close()
+                browser = None
+
+                if "sign_in" in url_atual:
+                    yield evento(0, "Login falhou. Verifique e-mail e senha.", "error")
+                    return
 
                 if cookie_value:
                     await config_crud.save_cookie(db, tenant_id, cookie_value)
                     yield evento(100, "Cookie capturado e salvo com sucesso!", "done", cookie_value)
                 else:
-                    yield evento(0, "Cookie não encontrado após login.", "error")
+                    yield evento(0, "Login ok mas cookie não encontrado.", "error")
 
-            except Exception as exc:
-                yield evento(0, f"Erro: {exc}", "error")
+        except Exception as exc:
+            yield evento(0, f"Erro: {exc}", "error")
+        finally:
+            if browser:
+                await browser.close()
 
     return StreamingResponse(
         stream_gen(),
