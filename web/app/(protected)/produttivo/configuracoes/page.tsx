@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircle, AlertCircle, Loader2, Wand2 } from "lucide-react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,33 @@ import {
   useValidateCookie,
   streamGerarCookie,
 } from "@/hooks/use-produttivo";
+import { usePathname } from "next/navigation";
+
+function ProduttivoNav() {
+  const pathname = usePathname();
+  const tabs = [
+    { href: "/produttivo/relatorio-atividades", label: "Visão Geral" },
+    { href: "/produttivo/relatorio-usuario",    label: "Por Usuário" },
+    { href: "/produttivo/configuracoes",        label: "Configurações" },
+  ];
+  return (
+    <div className="flex gap-1 border-b">
+      {tabs.map((t) => (
+        <Link
+          key={t.href}
+          href={t.href}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            pathname === t.href
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {t.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 export default function ProduttivoConfigPage() {
   const { data: config, isLoading, refetch: refetchConfig } = useProduttivoConfig();
@@ -27,7 +55,6 @@ export default function ProduttivoConfigPage() {
   const [accountId, setAccountId] = useState("");
   const [validationResult, setValidationResult] = useState<boolean | null>(null);
 
-  // Auto-generate state
   const [autoEmail, setAutoEmail] = useState("");
   const [autoSenha, setAutoSenha] = useState("");
   const [autoProgress, setAutoProgress] = useState(0);
@@ -113,187 +140,187 @@ export default function ProduttivoConfigPage() {
 
   return (
     <ScreenGuard screenKey="produttivo">
-      <div className="max-w-2xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Configurações — Produttivo</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Configure a integração com o Produttivo para acessar os relatórios de campo.
-          </p>
-        </div>
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold tracking-tight">Produttivo</h1>
 
-        {/* Status atual */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Status da Conexão</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {isLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Carregando...
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 text-sm">
-                  {config?.has_cookie ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-yellow-500" />
-                  )}
-                  <span>
-                    {config?.has_cookie
-                      ? `Cookie configurado${config.cookie_updated_at ? ` — atualizado em ${new Date(config.cookie_updated_at).toLocaleString("pt-BR")}` : ""}`
-                      : "Nenhum cookie configurado"}
-                  </span>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Account ID: <span className="font-mono font-medium">{config?.account_id ?? "—"}</span>
-                </div>
-                {validationResult !== null && (
-                  <div className={`flex items-center gap-2 text-sm font-medium ${validationResult ? "text-green-600" : "text-red-600"}`}>
-                    {validationResult ? (
-                      <><CheckCircle className="h-4 w-4" /> Cookie válido — conexão OK</>
-                    ) : (
-                      <><AlertCircle className="h-4 w-4" /> Cookie inválido — renove a sessão</>
-                    )}
-                  </div>
-                )}
-                {config?.has_cookie && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleValidate}
-                    disabled={validateCookie.isPending}
-                  >
-                    {validateCookie.isPending && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
-                    Validar Cookie
-                  </Button>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <ProduttivoNav />
 
-        {/* Account ID */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Account ID</CardTitle>
-            <CardDescription>
-              ID da conta no Produttivo. Padrão: 20834.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="account-id">Account ID</Label>
-              <Input
-                id="account-id"
-                placeholder={config?.account_id ?? "20834"}
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-              />
-            </div>
-            <Button
-              size="sm"
-              onClick={handleSaveAccountId}
-              disabled={!accountId.trim() || saveAccountId.isPending}
-            >
-              {saveAccountId.isPending && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
-              Salvar Account ID
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="max-w-2xl space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold">Configurações</h2>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              Configure a integração com o Produttivo para acessar os relatórios de campo.
+            </p>
+          </div>
 
-        {/* Auto-generate cookie */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Wand2 className="h-4 w-4" />
-              Gerar Cookie Automaticamente
-            </CardTitle>
-            <CardDescription>
-              Informe as credenciais do Produttivo. O sistema fará o login automaticamente e capturará o cookie de sessão.
-              A senha não é armazenada.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="auto-email">E-mail</Label>
-              <Input
-                id="auto-email"
-                type="email"
-                placeholder={config?.produttivo_email ?? "usuario@empresa.com"}
-                value={autoEmail}
-                onChange={(e) => setAutoEmail(e.target.value)}
-                disabled={autoRunning}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="auto-senha">Senha</Label>
-              <Input
-                id="auto-senha"
-                type="password"
-                placeholder="••••••••"
-                value={autoSenha}
-                onChange={(e) => setAutoSenha(e.target.value)}
-                disabled={autoRunning}
-              />
-            </div>
-            {autoRunning && (
-              <div className="space-y-1">
-                <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${autoProgress}%` }}
-                  />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Status da Conexão</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carregando...
                 </div>
-                <p className="text-xs text-muted-foreground">{autoMsg}</p>
-              </div>
-            )}
-            <Button
-              size="sm"
-              onClick={handleGerarCookie}
-              disabled={!autoEmail.trim() || !autoSenha.trim() || autoRunning}
-            >
-              {autoRunning ? (
-                <><Loader2 className="h-3 w-3 mr-2 animate-spin" />Gerando...</>
               ) : (
-                <><Wand2 className="h-3 w-3 mr-2" />Gerar Cookie</>
+                <>
+                  <div className="flex items-center gap-2 text-sm">
+                    {config?.has_cookie ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-yellow-500" />
+                    )}
+                    <span>
+                      {config?.has_cookie
+                        ? `Cookie configurado${config.cookie_updated_at ? ` — atualizado em ${new Date(config.cookie_updated_at).toLocaleString("pt-BR")}` : ""}`
+                        : "Nenhum cookie configurado"}
+                    </span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Account ID: <span className="font-mono font-medium">{config?.account_id ?? "—"}</span>
+                  </div>
+                  {validationResult !== null && (
+                    <div className={`flex items-center gap-2 text-sm font-medium ${validationResult ? "text-green-600" : "text-red-600"}`}>
+                      {validationResult ? (
+                        <><CheckCircle className="h-4 w-4" /> Cookie válido — conexão OK</>
+                      ) : (
+                        <><AlertCircle className="h-4 w-4" /> Cookie inválido — renove a sessão</>
+                      )}
+                    </div>
+                  )}
+                  {config?.has_cookie && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleValidate}
+                      disabled={validateCookie.isPending}
+                    >
+                      {validateCookie.isPending && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
+                      Validar Cookie
+                    </Button>
+                  )}
+                </>
               )}
-            </Button>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Cookie manual */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Cookie de Sessão (Manual)</CardTitle>
-            <CardDescription>
-              Cole aqui o valor do cookie <code className="text-xs bg-muted px-1 py-0.5 rounded">_produttivo_session</code> obtido
-              ao fazer login em <strong>app.produttivo.com.br</strong>. Abra o DevTools → Application → Cookies para copiar o valor.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="cookie">Valor do Cookie</Label>
-              <Textarea
-                id="cookie"
-                placeholder="Cole o valor do _produttivo_session aqui..."
-                value={cookie}
-                onChange={(e) => setCookie(e.target.value)}
-                rows={4}
-                className="font-mono text-xs"
-              />
-            </div>
-            <Button
-              size="sm"
-              onClick={handleSaveCookie}
-              disabled={!cookie.trim() || saveCookie.isPending}
-            >
-              {saveCookie.isPending && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
-              Salvar Cookie
-            </Button>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Account ID</CardTitle>
+              <CardDescription>ID da conta no Produttivo. Padrão: 20834.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="account-id">Account ID</Label>
+                <Input
+                  id="account-id"
+                  placeholder={config?.account_id ?? "20834"}
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={handleSaveAccountId}
+                disabled={!accountId.trim() || saveAccountId.isPending}
+              >
+                {saveAccountId.isPending && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
+                Salvar Account ID
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wand2 className="h-4 w-4" />
+                Gerar Cookie Automaticamente
+              </CardTitle>
+              <CardDescription>
+                Informe as credenciais do Produttivo. O sistema fará o login automaticamente e capturará o cookie de sessão.
+                A senha não é armazenada.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="auto-email">E-mail</Label>
+                <Input
+                  id="auto-email"
+                  type="email"
+                  placeholder={config?.produttivo_email ?? "usuario@empresa.com"}
+                  value={autoEmail}
+                  onChange={(e) => setAutoEmail(e.target.value)}
+                  disabled={autoRunning}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="auto-senha">Senha</Label>
+                <Input
+                  id="auto-senha"
+                  type="password"
+                  placeholder="••••••••"
+                  value={autoSenha}
+                  onChange={(e) => setAutoSenha(e.target.value)}
+                  disabled={autoRunning}
+                />
+              </div>
+              {autoRunning && (
+                <div className="space-y-1">
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${autoProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{autoMsg}</p>
+                </div>
+              )}
+              <Button
+                size="sm"
+                onClick={handleGerarCookie}
+                disabled={!autoEmail.trim() || !autoSenha.trim() || autoRunning}
+              >
+                {autoRunning ? (
+                  <><Loader2 className="h-3 w-3 mr-2 animate-spin" />Gerando...</>
+                ) : (
+                  <><Wand2 className="h-3 w-3 mr-2" />Gerar Cookie</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Cookie de Sessão (Manual)</CardTitle>
+              <CardDescription>
+                Cole aqui o valor do cookie <code className="text-xs bg-muted px-1 py-0.5 rounded">_produttivo_session</code> obtido
+                ao fazer login em <strong>app.produttivo.com.br</strong>. Abra o DevTools → Application → Cookies para copiar o valor.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="cookie">Valor do Cookie</Label>
+                <Textarea
+                  id="cookie"
+                  placeholder="Cole o valor do _produttivo_session aqui..."
+                  value={cookie}
+                  onChange={(e) => setCookie(e.target.value)}
+                  rows={4}
+                  className="font-mono text-xs"
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={handleSaveCookie}
+                disabled={!cookie.trim() || saveCookie.isPending}
+              >
+                {saveCookie.isPending && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
+                Salvar Cookie
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </ScreenGuard>
   );
