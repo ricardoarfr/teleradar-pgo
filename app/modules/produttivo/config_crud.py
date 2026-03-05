@@ -9,6 +9,11 @@ from app.modules.produttivo.config_models import ProduttivoConfig
 
 
 async def get_or_create_config(db: AsyncSession, tenant_id: UUID) -> ProduttivoConfig:
+    if tenant_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não está associado a nenhuma empresa. Associe o usuário a uma empresa antes de configurar o Produttivo.",
+        )
     result = await db.execute(select(ProduttivoConfig).where(ProduttivoConfig.tenant_id == tenant_id))
     config = result.scalar_one_or_none()
     if not config:
