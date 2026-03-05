@@ -28,6 +28,12 @@ class BaseFormModel(ABC):
         """Returns a flat dict of extracted fields for this fill."""
         ...
 
+    def extrair_producao(self, fill: FormFill) -> dict:
+        """Standardized production values for grouped aggregation.
+        Override in subclasses. Returns cabo_m, cordoalha_m, ceo, cto, dio.
+        """
+        return {"cabo_m": 0, "cordoalha_m": 0, "ceo": 0, "cto": 0, "dio": 0}
+
     @property
     @abstractmethod
     def colunas_especificas(self) -> list[str]:
