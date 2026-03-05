@@ -45,16 +45,21 @@ async def validate_cookie(cookie: str, account_id: str) -> bool:
         return r.status_code == 200
 
 
-async def buscar_todos_usuarios(cookie: str, account_id: str) -> list[AccountMember]:
-    """Fetches all active account members (technicians)."""
+async def buscar_todos_usuarios(
+    cookie: str, account_id: str, include_inactive: bool = False
+) -> list[AccountMember]:
+    """Fetches account members. By default only active; pass include_inactive=True for all."""
     members: list[AccountMember] = []
     page = 1
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         while True:
+            params: dict = {"account_id": account_id, "per_page": 100, "page": page}
+            if not include_inactive:
+                params["status"] = "active"
             r = await client.get(
                 f"{BASE_URL}/account_members",
                 headers=_build_headers(cookie),
-                params={"account_id": account_id, "per_page": 100, "page": page, "status": "active"},
+                params=params,
             )
             _raise_for_produttivo(r)
             data = r.json()

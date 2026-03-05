@@ -203,13 +203,21 @@ async def save_account_id(
 
 @router.get("/usuarios")
 async def listar_usuarios(
+    include_inactive: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_staff_up),
 ):
     config = await config_crud.get_config_or_404(db, current_user.tenant_id)
-    members = await api_client.buscar_todos_usuarios(config.cookie, config.account_id)
+    members = await api_client.buscar_todos_usuarios(
+        config.cookie, config.account_id, include_inactive=include_inactive
+    )
     return success("Usuários do Produttivo.", [
-        {"id": m.user_id, "nome": m.display_name, "status": m.status}
+        {
+            "id": m.user_id,
+            "nome": m.display_name,
+            "status": m.status,
+            "email": m.user.email if m.user else None,
+        }
         for m in members
     ])
 

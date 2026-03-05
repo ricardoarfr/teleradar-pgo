@@ -15,6 +15,16 @@ class FusoesProvedorV5(BaseFormModel):
     def colunas_especificas(self) -> list[str]:
         return ["Atividade", "CEO", "CTO", "DIO"]
 
+    def extrair_producao(self, fill: FormFill) -> dict:
+        dados = self.extrair_dados(fill)
+        return {
+            "cabo_m": 0,
+            "cordoalha_m": 0,
+            "ceo": dados.get("CEO", 0),
+            "cto": dados.get("CTO", 0),
+            "dio": dados.get("DIO", 0),
+        }
+
     def extrair_dados(self, fill: FormFill) -> dict:
         atividade = (self.get_field(fill, "ATIVIDADE") or "").upper().strip()
 

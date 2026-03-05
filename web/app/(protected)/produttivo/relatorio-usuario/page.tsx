@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Download, Search, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Download, Search, Loader2, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,15 @@ import {
   useRelatorioUsuario,
   useProduttivoUsuarios,
   useProduttivoFormularios,
-  useProduttivoWorks,
   useProduttivoLocais,
   buildExcelUrl,
 } from "@/hooks/use-produttivo";
 import { api } from "@/lib/api";
-import type { ProduttivoUser, ProduttivoForm, ProduttivoWork, ProduttivoLocal } from "@/types/produttivo";
+import type { ProduttivoUser, ProduttivoForm, ProduttivoLocal } from "@/types/produttivo";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function toApiDate(d: string): string {
   if (!d) return "";
@@ -42,6 +45,10 @@ function downloadBlob(url: string, filename: string) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Period presets
+// ---------------------------------------------------------------------------
+
 type Preset = "hoje" | "7d" | "30d" | "60d" | "90d" | "custom";
 
 const PRESETS: { id: Preset; label: string; days: number | null }[] = [
@@ -52,6 +59,10 @@ const PRESETS: { id: Preset; label: string; days: number | null }[] = [
   { id: "90d",    label: "90 dias",       days: 89   },
   { id: "custom", label: "Personalizado", days: null },
 ];
+
+// ---------------------------------------------------------------------------
+// Nav
+// ---------------------------------------------------------------------------
 
 function ProduttivoNav({ active }: { active: string }) {
   const tabs = [
@@ -78,22 +89,18 @@ function ProduttivoNav({ active }: { active: string }) {
   );
 }
 
-interface RelUsuarioParams {
-  data_inicio: string;
-  data_fim: string;
-  user_ids?: string;
-  form_ids?: string;
-  work_ids?: string;
-  resource_place_ids?: string;
-}
+// ---------------------------------------------------------------------------
+// MultiSelect component
+// ---------------------------------------------------------------------------
 
-function ChipGroup<T extends { id: number }>({
+function MultiSelect<T extends { id: number }>({
   label,
   items,
   selected,
   getName,
   onToggle,
   onClear,
+  placeholder = "Todos",
 }: {
   label: string;
   items: T[];
@@ -101,57 +108,154 @@ function ChipGroup<T extends { id: number }>({
   getName: (item: T) => string;
   onToggle: (item: T) => void;
   onClear: () => void;
+  placeholder?: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = search
+    ? items.filter((i) => getName(i).toLowerCase().includes(search.toLowerCase()))
+    : items;
+
   if (items.length === 0) return null;
+
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      <div className="flex flex-wrap gap-2">
-        {items.map((item) => {
-          const sel = !!selected.find((x) => x.id === item.id);
-          return (
-            <button
-              key={item.id}
-              onClick={() => onToggle(item)}
-              className={`text-xs px-2 py-1 rounded border transition-colors ${
-                sel
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border hover:bg-muted"
-              }`}
-            >
-              {getName(item)}
-            </button>
-          );
-        })}
+    <div className="space-y-1">
+      <Label className="text-sm">{label}</Label>
+      <div ref={ref} className="relative">
+        {/* Trigger */}
+        <div
+          onClick={() => setOpen((v) => !v)}
+          className="min-h-9 px-3 py-1.5 border rounded-md bg-background cursor-pointer flex items-center gap-1 flex-wrap pr-8"
+        >
+          {selected.length === 0 ? (
+            <span className="text-sm text-muted-foreground">{placeholder}</span>
+          ) : (
+            selected.map((item) => (
+              <span
+                key={item.id}
+                className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full"
+              >
+                {getName(item)}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggle(item); }}
+                  className="hover:text-destructive leading-none"
+                >
+                  ×
+                </button>
+              </span>
+            ))
+          )}
+          <ChevronDown className="h-4 w-4 text-muted-foreground absolute right-2 top-2.5" />
+        </div>
+
+        {/* Dropdown */}
+        {open && (
+          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-60 overflow-auto">
+            <div className="p-2 border-b sticky top-0 bg-popover">
+              <input
+                autoFocus
+                placeholder="Buscar..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full text-sm px-2 py-1 border rounded outline-none focus:ring-1 focus:ring-primary bg-background"
+              />
+            </div>
+            {selected.length > 0 && (
+              <button
+                onClick={() => { onClear(); setOpen(false); setSearch(""); }}
+                className="w-full text-left text-xs text-muted-foreground px-3 py-1.5 hover:bg-muted border-b"
+              >
+                Limpar seleção
+              </button>
+            )}
+            {filtered.map((item) => {
+              const sel = !!selected.find((x) => x.id === item.id);
+              return (
+                <label
+                  key={item.id}
+                  className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted cursor-pointer text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={sel}
+                    onChange={() => onToggle(item)}
+                    className="h-3.5 w-3.5 shrink-0"
+                  />
+                  {getName(item)}
+                </label>
+              );
+            })}
+            {filtered.length === 0 && (
+              <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum resultado.</p>
+            )}
+          </div>
+        )}
       </div>
-      {selected.length > 0 && (
-        <button className="text-xs text-muted-foreground underline" onClick={onClear}>
-          Limpar seleção
-        </button>
-      )}
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
+interface RelUsuarioParams {
+  data_inicio: string;
+  data_fim: string;
+  user_ids?: string;
+  form_ids?: string;
+  resource_place_ids?: string;
+}
+
+const FIXED_COLS = [
+  "Cliente",
+  "Nome da Atividade",
+  "Usuário",
+  "Qtd",
+  "Data Inicial",
+  "Data Final",
+  "CABO (m)",
+  "CORDOALHA (m)",
+  "CEO",
+  "CTO",
+  "DIO",
+] as const;
+
 export default function RelatorioUsuarioPage() {
   const todayStr = new Date().toISOString().split("T")[0];
 
-  const [preset, setPreset] = useState<Preset>("30d");
-  const [inicio, setInicio] = useState(daysAgo(29));
-  const [fim, setFim] = useState(todayStr);
+  const [preset, setPreset]             = useState<Preset>("30d");
+  const [inicio, setInicio]             = useState(daysAgo(29));
+  const [fim, setFim]                   = useState(todayStr);
+  const [showInactive, setShowInactive] = useState(false);
   const [selectedUsers,  setSelectedUsers]  = useState<ProduttivoUser[]>([]);
   const [selectedForms,  setSelectedForms]  = useState<ProduttivoForm[]>([]);
-  const [selectedWorks,  setSelectedWorks]  = useState<ProduttivoWork[]>([]);
   const [selectedLocais, setSelectedLocais] = useState<ProduttivoLocal[]>([]);
-  const [params, setParams] = useState<RelUsuarioParams | null>(null);
+  const [params, setParams]             = useState<RelUsuarioParams | null>(null);
 
-  const { data: usuarios }    = useProduttivoUsuarios();
-  const { data: formularios } = useProduttivoFormularios();
-  const { data: locais }      = useProduttivoLocais();
-  const formIds = selectedForms.map((f) => f.id);
-  const { data: works } = useProduttivoWorks(formIds);
+  const { data: allUsuarios }  = useProduttivoUsuarios(showInactive);
+  const { data: formularios }  = useProduttivoFormularios();
+  const { data: locais }       = useProduttivoLocais();
 
   const { data, isFetching, error } = useRelatorioUsuario(params);
+
+  // Filter users by status unless showInactive is checked
+  const usuarios = showInactive
+    ? allUsuarios
+    : allUsuarios?.filter((u) => u.status !== "inactive");
 
   const handlePreset = (p: Preset, days: number | null) => {
     setPreset(p);
@@ -169,7 +273,6 @@ export default function RelatorioUsuarioPage() {
     };
     if (selectedUsers.length  > 0) p.user_ids           = selectedUsers.map((u) => u.id).join(",");
     if (selectedForms.length  > 0) p.form_ids           = selectedForms.map((f) => f.id).join(",");
-    if (selectedWorks.length  > 0) p.work_ids           = selectedWorks.map((w) => w.id).join(",");
     if (selectedLocais.length > 0) p.resource_place_ids = selectedLocais.map((l) => l.id).join(",");
     setParams(p);
   };
@@ -182,7 +285,6 @@ export default function RelatorioUsuarioPage() {
     };
     if (params.user_ids)           dlParams.user_ids           = params.user_ids;
     if (params.form_ids)           dlParams.form_ids           = params.form_ids;
-    if (params.work_ids)           dlParams.work_ids           = params.work_ids;
     if (params.resource_place_ids) dlParams.resource_place_ids = params.resource_place_ids;
     downloadBlob(
       buildExcelUrl("usuario", dlParams),
@@ -190,16 +292,10 @@ export default function RelatorioUsuarioPage() {
     );
   };
 
-  const toggleUser  = (u: ProduttivoUser)  =>
-    setSelectedUsers((prev)  => prev.find((x) => x.id === u.id) ? prev.filter((x) => x.id !== u.id) : [...prev, u]);
-  const toggleForm  = (f: ProduttivoForm)  =>
-    setSelectedForms((prev)  => {
-      const exists = prev.find((x) => x.id === f.id);
-      if (exists) { setSelectedWorks([]); return prev.filter((x) => x.id !== f.id); }
-      return [...prev, f];
-    });
-  const toggleWork  = (w: ProduttivoWork)  =>
-    setSelectedWorks((prev)  => prev.find((x) => x.id === w.id) ? prev.filter((x) => x.id !== w.id) : [...prev, w]);
+  const toggleUser  = (u: ProduttivoUser) =>
+    setSelectedUsers((prev) => prev.find((x) => x.id === u.id) ? prev.filter((x) => x.id !== u.id) : [...prev, u]);
+  const toggleForm  = (f: ProduttivoForm) =>
+    setSelectedForms((prev) => prev.find((x) => x.id === f.id) ? prev.filter((x) => x.id !== f.id) : [...prev, f]);
   const toggleLocal = (l: ProduttivoLocal) =>
     setSelectedLocais((prev) => prev.find((x) => x.id === l.id) ? prev.filter((x) => x.id !== l.id) : [...prev, l]);
 
@@ -213,7 +309,7 @@ export default function RelatorioUsuarioPage() {
         <div>
           <h2 className="text-lg font-semibold">Atividades por Usuário</h2>
           <p className="text-muted-foreground text-sm mt-0.5">
-            Relatório detalhado com campos específicos por formulário.
+            Relatório agrupado por OS × técnico com totais de produção.
           </p>
         </div>
 
@@ -222,7 +318,8 @@ export default function RelatorioUsuarioPage() {
             <CardTitle className="text-base">Filtros</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Atalhos de período */}
+
+            {/* Período */}
             <div>
               <Label className="mb-2 block text-xs text-muted-foreground uppercase tracking-wide">
                 Período
@@ -266,9 +363,23 @@ export default function RelatorioUsuarioPage() {
               </div>
             </div>
 
+            {/* Checkbox inativos */}
+            <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => {
+                  setShowInactive(e.target.checked);
+                  setSelectedUsers([]);
+                }}
+                className="h-4 w-4"
+              />
+              Mostrar usuários inativos
+            </label>
+
             {/* Usuários */}
-            <ChipGroup
-              label="Usuários (opcional — vazio = todos)"
+            <MultiSelect
+              label="Usuários (vazio = todos)"
               items={usuarios ?? []}
               selected={selectedUsers}
               getName={(u) => u.nome}
@@ -277,48 +388,18 @@ export default function RelatorioUsuarioPage() {
             />
 
             {/* Formulários */}
-            <ChipGroup
-              label="Formulários (opcional — vazio = todos)"
+            <MultiSelect
+              label="Formulários (vazio = todos)"
               items={formularios ?? []}
               selected={selectedForms}
               getName={(f) => f.nome}
               onToggle={toggleForm}
-              onClear={() => { setSelectedForms([]); setSelectedWorks([]); }}
+              onClear={() => setSelectedForms([])}
             />
 
-            {/* Works (só quando exatamente 1 formulário selecionado) */}
-            {formIds.length === 1 && works && works.length > 0 && (
-              <div className="space-y-2">
-                <Label>OS / Work (opcional)</Label>
-                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                  {works.map((w) => {
-                    const sel = !!selectedWorks.find((x) => x.id === w.id);
-                    return (
-                      <button
-                        key={w.id}
-                        onClick={() => toggleWork(w)}
-                        className={`text-xs px-2 py-1 rounded border transition-colors ${
-                          sel
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background border-border hover:bg-muted"
-                        }`}
-                      >
-                        {w.numero ? `#${w.numero} — ` : ""}{w.titulo}
-                      </button>
-                    );
-                  })}
-                </div>
-                {selectedWorks.length > 0 && (
-                  <button className="text-xs text-muted-foreground underline" onClick={() => setSelectedWorks([])}>
-                    Limpar seleção
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Locais / Clientes */}
-            <ChipGroup
-              label="Clientes / Locais (opcional — vazio = todos)"
+            {/* Local / Cliente */}
+            <MultiSelect
+              label="Local / Cliente (vazio = todos)"
               items={locais ?? []}
               selected={selectedLocais}
               getName={(l) => l.nome}
@@ -345,7 +426,7 @@ export default function RelatorioUsuarioPage() {
           </CardContent>
         </Card>
 
-        {/* Painel de resumo dos filtros aplicados */}
+        {/* Resumo dos filtros */}
         {params && (
           <div className="rounded-md border bg-muted/40 p-4 text-sm space-y-1">
             <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide mb-2">
@@ -357,9 +438,6 @@ export default function RelatorioUsuarioPage() {
             )}
             {params.form_ids && (
               <p><span className="font-medium">Formulários:</span> {selectedForms.map((f) => f.nome).join(", ")}</p>
-            )}
-            {params.work_ids && (
-              <p><span className="font-medium">Works:</span> {selectedWorks.map((w) => w.titulo).join(", ")}</p>
             )}
             {params.resource_place_ids && (
               <p><span className="font-medium">Clientes:</span> {selectedLocais.map((l) => l.nome).join(", ")}</p>
@@ -380,7 +458,7 @@ export default function RelatorioUsuarioPage() {
               <CardTitle className="text-base flex items-center justify-between">
                 <span>Resultados</span>
                 <span className="text-sm font-normal text-muted-foreground">
-                  {data.total} registro(s)
+                  {data.total_atividades} atividade(s) · {data.total} preenchimento(s)
                 </span>
               </CardTitle>
             </CardHeader>
@@ -392,9 +470,9 @@ export default function RelatorioUsuarioPage() {
               ) : (
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      {data.colunas.map((col) => (
-                        <th key={col} className="text-left py-2 font-medium whitespace-nowrap pr-4">
+                    <tr className="border-b bg-muted/30">
+                      {FIXED_COLS.map((col) => (
+                        <th key={col} className="text-left py-2 px-3 font-medium whitespace-nowrap">
                           {col}
                         </th>
                       ))}
@@ -402,9 +480,9 @@ export default function RelatorioUsuarioPage() {
                   </thead>
                   <tbody>
                     {data.linhas.map((row, i) => (
-                      <tr key={i} className="border-b last:border-0">
-                        {data.colunas.map((col) => (
-                          <td key={col} className="py-2 pr-4 whitespace-nowrap">
+                      <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
+                        {FIXED_COLS.map((col) => (
+                          <td key={col} className="py-2 px-3 whitespace-nowrap">
                             {row[col] ?? "—"}
                           </td>
                         ))}

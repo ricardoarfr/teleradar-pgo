@@ -9,6 +9,7 @@ export interface ProduttivoUser {
   id: number;
   nome: string;
   status: string;
+  email?: string;
 }
 
 export interface ProduttivoForm {
@@ -55,13 +56,23 @@ export interface RelAtividadesResult {
 
 // --- Report 2 ---
 export interface RelUsuarioRow {
-  [key: string]: string | number;
+  Cliente: string;
+  "Nome da Atividade": string;
+  "Usuário": string;
+  Qtd: number;
+  "Data Inicial": string;
+  "Data Final": string;
+  "CABO (m)": number;
+  "CORDOALHA (m)": number;
+  CEO: number;
+  CTO: number;
+  DIO: number;
 }
 
 export interface RelUsuarioResult {
   periodo: { inicio: string; fim: string };
   total: number;
+  total_atividades: number;
   colunas: string[];
   linhas: RelUsuarioRow[];
-  colunas_especificas: string[];
 }

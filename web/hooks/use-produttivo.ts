@@ -49,11 +49,15 @@ export function useValidateCookie() {
 // Lists
 // ---------------------------------------------------------------------------
 
-export function useProduttivoUsuarios() {
+export function useProduttivoUsuarios(includeInactive = false) {
   return useQuery({
-    queryKey: ["produttivo-usuarios"],
-    queryFn: () => apiGet<ProduttivoUser[]>(`${PREFIX}/usuarios`),
-    staleTime: 5 * 60 * 1000, // 5 min cache
+    queryKey: ["produttivo-usuarios", includeInactive],
+    queryFn: () =>
+      apiGet<ProduttivoUser[]>(
+        `${PREFIX}/usuarios`,
+        includeInactive ? { include_inactive: "true" } : {}
+      ),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

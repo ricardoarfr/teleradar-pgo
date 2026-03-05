@@ -11,6 +11,16 @@ class LancamentoCaboV4(BaseFormModel):
     def colunas_especificas(self) -> list[str]:
         return ["Tipo Lançamento", "Cabo (m)", "Cordoalha (m)"]
 
+    def extrair_producao(self, fill: FormFill) -> dict:
+        dados = self.extrair_dados(fill)
+        return {
+            "cabo_m":      dados.get("Cabo (m)", 0),
+            "cordoalha_m": dados.get("Cordoalha (m)", 0),
+            "ceo": 0,
+            "cto": 0,
+            "dio": 0,
+        }
+
     def extrair_dados(self, fill: FormFill) -> dict:
         try:
             ponta_inicial = float(self.get_field(fill, "PONTA_INICIAL") or 0)
