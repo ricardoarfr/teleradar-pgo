@@ -110,7 +110,7 @@ export default function RelatorioAtividadesPage() {
     };
   }, [data, busca, topN]);
 
-  const dlParams = params
+  const dlParams: Record<string, string> = params
     ? { data_inicio: params.data_inicio, data_fim: params.data_fim }
     : {};
   const sufixo = params
