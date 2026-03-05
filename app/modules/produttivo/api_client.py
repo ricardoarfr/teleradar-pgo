@@ -48,14 +48,14 @@ async def validate_cookie(cookie: str, account_id: str) -> bool:
 async def buscar_todos_usuarios(
     cookie: str, account_id: str, include_inactive: bool = False
 ) -> list[AccountMember]:
-    """Fetches account members. By default only active; pass include_inactive=True for all."""
+    """Fetches account members. By default only active; pass include_inactive=True for all.
+    Status filtering is done client-side to avoid API inconsistencies.
+    """
     members: list[AccountMember] = []
     page = 1
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         while True:
             params: dict = {"account_id": account_id, "per_page": 100, "page": page}
-            if not include_inactive:
-                params["status"] = "active"
             r = await client.get(
                 f"{BASE_URL}/account_members",
                 headers=_build_headers(cookie),
@@ -64,7 +64,10 @@ async def buscar_todos_usuarios(
             _raise_for_produttivo(r)
             data = r.json()
             results = data.get("results", [])
-            members.extend(AccountMember(**m) for m in results)
+            for m in results:
+                member = AccountMember(**m)
+                if include_inactive or member.status == "active":
+                    members.append(member)
             meta = PaginationMeta(**data.get("meta", {}))
             if page >= meta.total_pages or len(results) < 100:
                 break
@@ -72,8 +75,10 @@ async def buscar_todos_usuarios(
     return members
 
 
-async def buscar_todos_formularios(cookie: str, account_id: str) -> list[Form]:
-    """Fetches all active forms."""
+async def buscar_todos_formularios(
+    cookie: str, account_id: str, include_inactive: bool = False
+) -> list[Form]:
+    """Fetches forms. By default only active; pass include_inactive=True for all."""
     forms: list[Form] = []
     page = 1
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
@@ -81,12 +86,15 @@ async def buscar_todos_formularios(cookie: str, account_id: str) -> list[Form]:
             r = await client.get(
                 f"{BASE_URL}/forms.json",
                 headers=_build_headers(cookie),
-                params={"account_id": account_id, "per_page": 100, "page": page, "actives": True},
+                params={"account_id": account_id, "per_page": 100, "page": page},
             )
             _raise_for_produttivo(r)
             data = r.json()
             results = data.get("results", [])
-            forms.extend(Form(**f) for f in results)
+            for f in results:
+                form = Form(**f)
+                if include_inactive or form.status == "active":
+                    forms.append(form)
             meta = PaginationMeta(**data.get("meta", {}))
             if page >= meta.total_pages or len(results) < 100:
                 break
