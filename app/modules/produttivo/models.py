@@ -25,7 +25,7 @@ class FormFill(BaseModel):
     work_id: Optional[int] = None
     resource_id: Optional[int] = None
     project_id: Optional[int] = None
-    created_by_id: int
+    created_by_id: Optional[int] = None  # API may return null for some fills
     updated_by_id: Optional[int] = None
     created_at: str
     updated_at: str
@@ -39,7 +39,7 @@ class FormFill(BaseModel):
 class Work(BaseModel):
     id: int
     work_number: Optional[int] = None
-    title: str
+    title: Optional[str] = None  # API may return null
     form_id: int
     status: str
     work_type: Optional[str] = None

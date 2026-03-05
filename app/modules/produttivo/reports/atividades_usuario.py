@@ -75,10 +75,10 @@ async def gerar_relatorio_usuario(
         works = await buscar_works_por_form(cookie, account_id, fetch_form_ids)
         work_map = {w.id: w for w in works}
 
-    # Group fills by (work_id, user_id)
+    # Group fills by (work_id, user_id); use 0 when created_by_id is null
     grupos: dict[tuple, list[FormFill]] = defaultdict(list)
     for fill in fills:
-        grupos[(fill.work_id, fill.created_by_id)].append(fill)
+        grupos[(fill.work_id, fill.created_by_id or 0)].append(fill)
 
     linhas = []
     for (work_id, user_id), grupo in grupos.items():
