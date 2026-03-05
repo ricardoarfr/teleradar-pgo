@@ -41,8 +41,14 @@ export default function ProduttivoConfigPage() {
       setCookie("");
       setValidationResult(null);
       toast({ title: "Cookie salvo!", description: "Sessão do Produttivo atualizada." });
-    } catch {
-      toast({ title: "Erro ao salvar cookie", variant: "destructive" });
+    } catch (err: unknown) {
+      const detail =
+        (err as { response?: { data?: { detail?: string; message?: string } } })?.response?.data
+          ?.detail ??
+        (err as { response?: { data?: { detail?: string; message?: string } } })?.response?.data
+          ?.message ??
+        String(err);
+      toast({ title: "Erro ao salvar cookie", description: detail, variant: "destructive" });
     }
   };
 
@@ -52,8 +58,14 @@ export default function ProduttivoConfigPage() {
       await saveAccountId.mutateAsync(accountId.trim());
       setAccountId("");
       toast({ title: "Account ID salvo!" });
-    } catch {
-      toast({ title: "Erro ao salvar Account ID", variant: "destructive" });
+    } catch (err: unknown) {
+      const detail =
+        (err as { response?: { data?: { detail?: string; message?: string } } })?.response?.data
+          ?.detail ??
+        (err as { response?: { data?: { detail?: string; message?: string } } })?.response?.data
+          ?.message ??
+        String(err);
+      toast({ title: "Erro ao salvar Account ID", description: detail, variant: "destructive" });
     }
   };
 

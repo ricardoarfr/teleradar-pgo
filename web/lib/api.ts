@@ -38,13 +38,20 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// Interceptor de resposta: refresh automático em caso de 401
+// Interceptor de resposta: refresh automático em caso de 401 ou 403 "Not authenticated"
+// O 403 "Not authenticated" ocorre quando o access_token expirou e o cookie foi deletado,
+// fazendo o HTTPBearer do FastAPI rejeitar a request antes mesmo de decodificar o JWT.
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthFailure =
+      error.response?.status === 401 ||
+      (error.response?.status === 403 &&
+        error.response?.data?.detail === "Not authenticated");
+
+    if (isAuthFailure && !originalRequest._retry) {
       originalRequest._retry = true;
 
       if (isRefreshing) {
