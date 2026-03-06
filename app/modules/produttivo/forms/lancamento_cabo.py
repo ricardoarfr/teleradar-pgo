@@ -23,18 +23,18 @@ class LancamentoCaboV4(BaseFormModel):
 
     def extrair_dados(self, fill: FormFill) -> dict:
         try:
-            ponta_inicial = float(self.get_field(fill, "PONTA_INICIAL") or 0)
+            ponta_inicial = float(self.get_field(fill, "PONTA INICIAL(METROS)") or 0)
         except (ValueError, TypeError):
             ponta_inicial = 0.0
         try:
-            ponta_final = float(self.get_field(fill, "PONTA_FINAL") or 0)
+            ponta_final = float(self.get_field(fill, "PONTA FINAL(METROS)") or 0)
         except (ValueError, TypeError):
             ponta_final = 0.0
 
         metragem = abs(ponta_final - ponta_inicial)
 
-        tipo = (self.get_field(fill, "TIPO_LANÇAMENTO") or "").upper()
-        especificacao = (self.get_field(fill, "ESPECIFICAÇÃO") or "").upper()
+        tipo = (self.get_field(fill, "TIPO DE LANÇAMENTO") or "").upper()
+        especificacao = (self.get_field(fill, "ESPECIFICAÇÃO DO CABO") or "").upper()
 
         is_cordoalha = "CORDOALHA" in tipo or "CORDOALHA" in especificacao
 
