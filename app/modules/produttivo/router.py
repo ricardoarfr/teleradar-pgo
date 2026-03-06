@@ -373,3 +373,56 @@ async def relatorio_usuario_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ---------------------------------------------------------------------------
+# DEBUG — inspect raw field_values from Produttivo (temporary)
+# ---------------------------------------------------------------------------
+
+@router.get("/debug/fill-fields")
+async def debug_fill_fields(
+    data_inicio: str = Query(...),
+    data_fim: str = Query(...),
+    form_id: int = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(_staff_up),
+):
+    """Returns raw field_values from the first few fills of a form.
+    Used to inspect actual field names returned by the Produttivo API.
+    """
+    import httpx
+    config = await config_crud.get_or_create_config(db, current_user.tenant_id)
+    if not config.cookie or not config.account_id:
+        raise HTTPException(status_code=400, detail="Cookie ou account_id não configurado.")
+
+    headers = api_client._build_headers(config.cookie)
+    params = [
+        ("account_id", config.account_id),
+        ("range_time", f"{data_inicio} - {data_fim}"),
+        ("per_page", 3),
+        ("page", 1),
+        ("form_fill[form_ids][]", form_id),
+    ]
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.get(
+            f"{api_client.BASE_URL}/form_fills.json",
+            headers=headers,
+            params=params,
+        )
+    if r.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Produttivo retornou {r.status_code}")
+
+    data = r.json()
+    results = data.get("results", [])
+    debug = []
+    for ff in results[:3]:
+        debug.append({
+            "fill_id": ff.get("id"),
+            "work_id": ff.get("work_id"),
+            "field_values_count": len(ff.get("field_values", [])),
+            "field_values": [
+                {"id": fv.get("id"), "name": fv.get("name"), "value": fv.get("value")}
+                for fv in ff.get("field_values", [])
+            ],
+        })
+    return success("Debug field_values.", {"fills": debug, "meta": data.get("meta", {})})
