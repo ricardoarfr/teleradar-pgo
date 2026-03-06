@@ -4,6 +4,7 @@ Returns one row per (work_id, user_id) pair with fixed columns:
   Cliente | Nome da Atividade | Usuário | Qtd | Data Inicial | Data Final |
   CABO (m) | CORDOALHA (m) | CEO | CTO | DIO
 """
+import asyncio
 from collections import defaultdict
 from datetime import datetime
 from typing import Optional
@@ -12,9 +13,9 @@ from app.modules.produttivo.api_client import (
     buscar_form_fills,
     buscar_resource_places,
     buscar_todos_usuarios,
-    buscar_works_por_form,
+    buscar_works_por_ids,
 )
-from app.modules.produttivo.forms.registry import listar_form_ids_conhecidos, obter_modelo
+from app.modules.produttivo.forms.registry import obter_modelo
 from app.modules.produttivo.models import FormFill
 
 COLUNAS = [
@@ -61,19 +62,20 @@ async def gerar_relatorio_usuario(
             "linhas": [],
         }
 
-    # Fetch supporting data
-    members = await buscar_todos_usuarios(cookie, account_id)
-    resource_places_list = await buscar_resource_places(cookie, account_id)
+    # Collect unique work_ids from fills and fetch their full data concurrently
+    # alongside users and resource_places. This covers ALL forms — not just
+    # registry-registered ones — fixing the "—" client and wrong title bug.
+    unique_work_ids = list({f.work_id for f in fills if f.work_id})
+
+    members, resource_places_list, works = await asyncio.gather(
+        buscar_todos_usuarios(cookie, account_id),
+        buscar_resource_places(cookie, account_id),
+        buscar_works_por_ids(cookie, unique_work_ids),
+    )
 
     user_map = {m.user_id: _format_user(m) for m in members}
     rp_map = {rp.id: rp.display_name for rp in resource_places_list}
-
-    # Fetch works for the requested form_ids, or all known form_ids if unfiltered
-    fetch_form_ids = form_ids if form_ids else listar_form_ids_conhecidos()
-    work_map: dict = {}
-    if fetch_form_ids:
-        works = await buscar_works_por_form(cookie, account_id, fetch_form_ids)
-        work_map = {w.id: w for w in works}
+    work_map = {w.id: w for w in works}
 
     # Group fills by (work_id, user_id); use 0 when created_by_id is null
     grupos: dict[tuple, list[FormFill]] = defaultdict(list)
@@ -84,7 +86,7 @@ async def gerar_relatorio_usuario(
     for (work_id, user_id), grupo in grupos.items():
         work = work_map.get(work_id) if work_id else None
 
-        work_title = work.title if work else _infer_work_title(grupo[0])
+        work_title = (work.title if work and work.title else None) or _infer_work_title(grupo[0])
         cliente = (
             rp_map.get(work.resource_place_id, "—")
             if work and work.resource_place_id
@@ -102,7 +104,7 @@ async def gerar_relatorio_usuario(
         data_ini_str = min(datas).strftime("%d/%m/%Y") if datas else "—"
         data_fim_str = max(datas).strftime("%d/%m/%Y") if datas else "—"
 
-        # Sum production values
+        # Sum production values (only for forms with a registered model)
         cabo_m = cordoalha_m = ceo = cto = dio = 0.0
         if work:
             modelo = obter_modelo(work.form_id)
