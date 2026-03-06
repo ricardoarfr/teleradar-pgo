@@ -108,6 +108,26 @@ async def buscar_todos_formularios(
     return forms
 
 
+async def buscar_works_por_ids(cookie: str, work_ids: list[int]) -> list[Work]:
+    """Fetches specific works by their IDs concurrently via GET /works/{id}."""
+    if not work_ids:
+        return []
+
+    async def _fetch_one(client: httpx.AsyncClient, wid: int) -> Work | None:
+        try:
+            r = await client.get(f"{BASE_URL}/works/{wid}", headers=_build_headers(cookie))
+            if r.status_code >= 400:
+                return None
+            return Work(**r.json())
+        except Exception:
+            return None
+
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        results = await asyncio.gather(*(_fetch_one(client, wid) for wid in work_ids))
+
+    return [w for w in results if w is not None]
+
+
 async def buscar_works_por_form(cookie: str, account_id: str, form_ids: list[int]) -> list[Work]:
     """Fetches all works for the given form_ids with pagination.
 
