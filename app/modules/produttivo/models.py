@@ -8,7 +8,7 @@ from pydantic import BaseModel
 class FieldValue(BaseModel):
     id: int
     name: str
-    value: Optional[str] = None
+    value: Optional[Any] = None
     notes: Optional[str] = None
     accuracy: Optional[int] = None
     attachment_url: Optional[Any] = None

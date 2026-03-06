@@ -16,14 +16,14 @@ class BaseFormModel(ABC):
     form_name: str
 
     def get_field(self, fill: FormFill, field_name: str) -> Any:
-        """Extracts a field value by name (case-insensitive, underscore/space tolerant).
+        """Extracts a field value by name (case-insensitive, strip + underscore/space tolerant).
 
-        Normalizes underscores to spaces so that "PONTA_INICIAL" matches "Ponta Inicial"
-        as returned by the Produttivo API.
+        Normalizes underscores to spaces and strips whitespace so that
+        " PONTA INICIAL(METROS) " matches "PONTA INICIAL(METROS)" as returned by the API.
         """
-        name_lower = field_name.lower().replace("_", " ")
+        name_lower = field_name.strip().lower().replace("_", " ")
         for fv in fill.field_values:
-            if fv.name.lower().replace("_", " ") == name_lower:
+            if fv.name.strip().lower().replace("_", " ") == name_lower:
                 return fv.value
         return None
 
