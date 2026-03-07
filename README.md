@@ -1,6 +1,8 @@
 # Teleradar PGO
 
-Sistema de gestão para ISPs (Provedores de Internet) — multi-tenant, RBAC, seguro e escalável.
+Centraliza em um só lugar o que hoje está espalhado: contratos, equipes de campo e relatórios de produtividade — conectando o back-office do provedor com as ferramentas que os técnicos já usam.
+
+Multi-tenant, RBAC, seguro e escalável.
 
 **Stack:** Python 3.11 + FastAPI + PostgreSQL + SQLAlchemy 2.0 (async) + Alembic + JWT
 
@@ -100,7 +102,7 @@ curl -X POST http://localhost:8000/auth/master/bootstrap \
 
 ## Módulo Produttivo
 
-Integração com a plataforma [Produttivo](https://app.produttivo.com.br) para consolidação de atividades de campo em relatórios por usuário.
+Integração com a plataforma [Produttivo](https://app.produttivo.com.br) para trazer as atividades de campo para dentro do back-office — sem exigir que os técnicos mudem a forma como trabalham.
 
 ### Como funciona
 
