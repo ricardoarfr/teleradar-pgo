@@ -1,6 +1,8 @@
 # Teleradar PGO
 
-Sistema de gestão para ISPs (Provedores de Internet) — multi-tenant, RBAC, seguro e escalável.
+Centraliza em um só lugar o que hoje está espalhado: contratos, equipes de campo e relatórios de produtividade — conectando o back-office do provedor com as ferramentas que os técnicos já usam.
+
+Multi-tenant, RBAC, seguro e escalável.
 
 **Stack:** Python 3.11 + FastAPI + PostgreSQL + SQLAlchemy 2.0 (async) + Alembic + JWT
 
@@ -12,6 +14,7 @@ Sistema de gestão para ISPs (Provedores de Internet) — multi-tenant, RBAC, se
 Client -> FastAPI -> PostgreSQL
                  -> SMTP
                  -> Google OAuth2
+                 -> Produttivo API (por tenant)
 ```
 
 Rotas principais:
@@ -20,7 +23,7 @@ Rotas principais:
 - `/users` — Perfis
 - `/tenants` — Tenants
 - `/client` — Portal Cliente
-- `/modules/*` — Scaffolds 501
+- `/modules/produttivo` — Integração Produttivo
 
 ---
 
@@ -35,6 +38,7 @@ Rotas principais:
 | Auth | JWT (python-jose) + bcrypt |
 | Config | pydantic-settings + .env |
 | Email | aiosmtplib |
+| HTTP Client | httpx (async) |
 | Deploy | Render.com |
 
 ---
@@ -92,7 +96,72 @@ curl -X POST http://localhost:8000/auth/master/bootstrap \
   }'
 ```
 
-**Importante:** Após criar o MASTER, o endpoint retorna 403 permanentemente (a condição "sem MASTER" nunca mais se repete).
+**Importante:** Após criar o MASTER, o endpoint retorna 403 permanentemente.
+
+---
+
+## Módulo Produttivo
+
+Integração com a plataforma [Produttivo](https://app.produttivo.com.br) para trazer as atividades de campo para dentro do back-office — sem exigir que os técnicos mudem a forma como trabalham.
+
+### Como funciona
+
+Cada tenant configura suas próprias credenciais (cookie de sessão + account_id). O sistema busca os dados diretamente da API do Produttivo em tempo real — sem armazenar registros de campo no banco local.
+
+### Configuração por tenant
+
+```
+POST /modules/produttivo/config/cookie      → salva o cookie de sessão
+POST /modules/produttivo/config/account-id  → salva o account_id da conta
+GET  /modules/produttivo/config/validate    → valida se o cookie ainda é válido
+```
+
+### Relatório de Atividades por Usuário
+
+```
+GET /modules/produttivo/relatorio/usuario
+```
+
+Retorna linhas agrupadas por `(work_id, user_id)` com as colunas:
+
+| Coluna | Descrição |
+|--------|-----------|
+| Cliente | Local/cliente do work (resource_place) |
+| Nome da Atividade | Título do work (não do form_fill) |
+| Usuário | Nome completo + e-mail |
+| Qtd | Quantidade de form_fills no grupo |
+| Data Inicial | MIN(created_at) do grupo |
+| Data Final | MAX(created_at) do grupo |
+| CABO (m) | Soma de metragem de cabo (form_id 359797) |
+| CORDOALHA (m) | Soma de metragem de cordoalha (form_id 359797) |
+| CEO | Contagem de fusões CEO (form_id 375197) |
+| CTO | Contagem de fusões CTO (form_id 375197) |
+| DIO | Contagem de fusões DIO (form_id 375197) |
+
+Parâmetros de filtro: `data_inicio`, `data_fim`, `user_ids[]`, `form_ids[]`, `resource_place_ids[]`, `work_ids[]`.
+
+### Modelos de formulário implementados
+
+| Form ID | Nome | Extrai |
+|---------|------|--------|
+| `359797` | LANÇAMENTO DE CABO - V4 | `cabo_m`, `cordoalha_m` (via `PONTA INICIAL(METROS)` e `PONTA FINAL(METROS)`) |
+| `375197` | FUSÕES PROVEDOR V5 | `ceo`, `cto`, `dio` (via campo `ATIVIDADE`) |
+
+**Lógica CABO vs CORDOALHA:** classifica como cordoalha se a palavra `CORDOALHA` aparecer no campo `TIPO DE LANÇAMENTO` **ou** `ESPECIFICAÇÃO DO CABO`. Caso contrário, assume cabo.
+
+### Endpoint de debug
+
+```
+GET /modules/produttivo/debug/fill-fields?data_inicio=DD/MM/YYYY&data_fim=DD/MM/YYYY&form_id=359797
+```
+
+Retorna os `field_values` crus dos primeiros 3 form_fills de um formulário — útil para inspecionar os nomes exatos dos campos retornados pela API.
+
+### Adicionar novo modelo de formulário
+
+1. Criar `app/modules/produttivo/forms/meu_form.py` estendendo `BaseFormModel`
+2. Implementar `extrair_dados(fill)` e `extrair_producao(fill)`
+3. Registrar em `app/modules/produttivo/forms/registry.py`
 
 ---
 
@@ -183,14 +252,16 @@ alembic current
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
 | GET | `/client/me` | Dados do cliente |
-| GET | `/client/overview` | Dashboard (scaffold) |
+| GET | `/client/overview` | Dashboard |
 
-### Módulos (scaffolds — retornam 501)
-- `/modules/contracts`
-- `/modules/projects`
-- `/modules/materials`
-- `/modules/payments`
-- `/modules/reports`
+### Módulo Produttivo
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | `/modules/produttivo/config/cookie` | Salvar cookie de sessão |
+| POST | `/modules/produttivo/config/account-id` | Salvar account_id |
+| GET | `/modules/produttivo/config/validate` | Validar cookie |
+| GET | `/modules/produttivo/relatorio/usuario` | Relatório por usuário |
+| GET | `/modules/produttivo/debug/fill-fields` | Inspecionar campos crus (staff) |
 
 ---
 
@@ -207,7 +278,7 @@ alembic current
 - [x] Validação de input via Pydantic v2
 - [x] CORS configurável via env
 - [x] HTTPS enforçado em produção (Render garante)
-- [x] Isolamento de tenant no portal do cliente
+- [x] Isolamento de tenant (Produttivo config por tenant_id)
 - [x] Hierarquia de roles aplicada em todos os endpoints
 - [x] MASTER criado apenas via bootstrap (endpoint protegido por secret)
 - [x] Pool de conexões configurado com limites seguros (Free Tier)
