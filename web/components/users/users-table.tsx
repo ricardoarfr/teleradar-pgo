@@ -17,6 +17,7 @@ import { useUsers, usePendingUsers } from "@/hooks/use-users";
 import type { UserRole, UserStatus } from "@/types/user";
 import { formatDate } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Eye, Plus } from "lucide-react";
+import { useScreenAccess } from "@/hooks/use-screen-access";
 
 export function UsersTable() {
   const [tab, setTab] = useState<"all" | "pending">("all");
@@ -39,6 +40,7 @@ export function UsersTable() {
   const users = tab === "all" ? allData?.results ?? [] : pendingData ?? [];
   const total = tab === "all" ? allData?.total ?? 0 : (pendingData?.length ?? 0);
   const totalPages = tab === "all" ? Math.ceil(total / perPage) : 1;
+  const { create: canCreate } = useScreenAccess("admin.users");
 
   return (
     <div className="space-y-4">
@@ -71,12 +73,14 @@ export function UsersTable() {
             )}
           </button>
         </div>
-        <Link href="/admin/users/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4" />
-            Novo Usuário
-          </Button>
-        </Link>
+        {canCreate && (
+          <Link href="/admin/users/new">
+            <Button size="sm">
+              <Plus className="h-4 w-4" />
+              Novo Usuário
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Filtros (apenas na aba todos) */}

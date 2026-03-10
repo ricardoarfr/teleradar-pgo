@@ -14,8 +14,9 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 import type { ContratoCreate } from "@/types/contrato";
 import type { TenantInfo } from "@/types/auth";
+import { ActionGuard } from "@/components/layout/action-guard";
 
-export default function NovoContratoPage() {
+function NovoContratoContent() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
   const [selectedTenantId, setSelectedTenantId] = useState<string>("");
@@ -166,5 +167,13 @@ export default function NovoContratoPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function NovoContratoPage() {
+  return (
+    <ActionGuard screenKey="contratos" action="create">
+      <NovoContratoContent />
+    </ActionGuard>
   );
 }

@@ -16,6 +16,18 @@ _admin_or_master = require_roles(UserRole.ADMIN, UserRole.MASTER)
 _master_only = require_roles(UserRole.MASTER)
 
 
+@router.post("/users", response_model=None, status_code=201)
+async def create_user(
+    data: schemas.AdminCreateUserRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(_admin_or_master),
+):
+    user = await service.admin_create_user(
+        db, data.name, data.email, data.password, data.role, admin
+    )
+    return success("Usuário criado com sucesso.", schemas.UserDetail.model_validate(user))
+
+
 @router.get("/users", response_model=None)
 async def list_users(
     role: Optional[UserRole] = None,
@@ -118,7 +130,7 @@ async def list_user_tenants(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(_admin_or_master),
 ):
-    tenants = await service.get_user_tenants(db, user_id)
+    tenants = await service.get_user_tenants(db, user_id, admin)
     return success("Empresas do usuário.", [{"id": str(t.id), "name": t.name} for t in tenants])
 
 
