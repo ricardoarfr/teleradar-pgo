@@ -9,8 +9,9 @@ import { ContratoForm } from "@/components/contratos/contrato-form";
 import { useContrato, useUpdateContrato } from "@/hooks/use-contratos";
 import { toast } from "@/components/ui/use-toast";
 import type { ContratoUpdate } from "@/types/contrato";
+import { ActionGuard } from "@/components/layout/action-guard";
 
-export default function EditarContratoPage() {
+function EditarContratoContent() {
   const params = useParams();
   const contratoId = params.id as string;
   const router = useRouter();
@@ -78,5 +79,13 @@ export default function EditarContratoPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function EditarContratoPage() {
+  return (
+    <ActionGuard screenKey="contratos" action="edit">
+      <EditarContratoContent />
+    </ActionGuard>
   );
 }

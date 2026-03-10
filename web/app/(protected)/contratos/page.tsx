@@ -9,6 +9,7 @@ import { usePartners } from "@/hooks/use-partners";
 import { toast } from "@/components/ui/use-toast";
 import { ChevronLeft, ChevronRight, Edit2, Plus, Trash2 } from "lucide-react";
 import { ScreenGuard } from "@/components/layout/screen-guard";
+import { useScreenAccess } from "@/hooks/use-screen-access";
 import type { ContractStatus } from "@/types/contrato";
 
 const STATUS_LABELS: Record<ContractStatus, string> = {
@@ -30,6 +31,7 @@ export default function ContratosPage() {
   const { data, isLoading } = useContratos({ page, per_page: perPage });
   const { data: partnersData } = usePartners({ per_page: 100 });
   const deleteMutation = useDeleteContrato();
+  const { create: canCreate, edit: canEdit, delete: canDelete } = useScreenAccess("contratos");
 
   const getClienteName = (id: string | null) => {
     if (!id) return "—";
@@ -62,12 +64,14 @@ export default function ContratosPage() {
             <h1 className="text-2xl font-bold tracking-tight">Contratos</h1>
             <p className="text-muted-foreground text-sm">Gestão de contratos de serviços</p>
           </div>
-          <Link href="/contratos/new">
-            <Button size="sm">
-              <Plus className="h-4 w-4" />
-              Novo Contrato
-            </Button>
-          </Link>
+          {canCreate && (
+            <Link href="/contratos/new">
+              <Button size="sm">
+                <Plus className="h-4 w-4" />
+                Novo Contrato
+              </Button>
+            </Link>
+          )}
         </div>
 
         <div className="rounded-md border overflow-hidden">
@@ -137,20 +141,24 @@ export default function ContratosPage() {
                         : ""}
                     </td>
                     <td className="px-4 py-3 text-right space-x-1">
-                      <Link href={`/contratos/${contrato.id}/edit`}>
-                        <Button variant="ghost" size="icon">
-                          <Edit2 className="h-4 w-4" />
+                      {canEdit && (
+                        <Link href={`/contratos/${contrato.id}/edit`}>
+                          <Button variant="ghost" size="icon">
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(contrato.id, contrato.numero)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(contrato.id, contrato.numero)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      )}
                     </td>
                   </tr>
                 ))

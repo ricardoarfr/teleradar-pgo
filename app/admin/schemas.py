@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from uuid import UUID
 from datetime import datetime
 from typing import Optional, List
@@ -52,3 +52,10 @@ class ChangePasswordRequest(BaseModel):
 
 class ChangeTenantRequest(BaseModel):
     tenant_id: Optional[UUID] = None
+
+
+class AdminCreateUserRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=255)
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    role: UserRole = UserRole.STAFF

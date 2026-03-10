@@ -13,8 +13,9 @@ import { getMeAction } from "@/actions/auth-actions";
 import { useQuery } from "@tanstack/react-query";
 import type { PartnerCreate } from "@/types/partner";
 import { toast } from "@/components/ui/use-toast";
+import { ActionGuard } from "@/components/layout/action-guard";
 
-export default function NewPartnerPage() {
+function NewPartnerContent() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
   const [selectedTenantId, setSelectedTenantId] = useState<string>("");
@@ -109,5 +110,13 @@ export default function NewPartnerPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function NewPartnerPage() {
+  return (
+    <ActionGuard screenKey="partners" action="create">
+      <NewPartnerContent />
+    </ActionGuard>
   );
 }

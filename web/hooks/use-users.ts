@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
+import { useAuth } from "@/providers/auth-provider";
+import { useScreenPermissions } from "@/providers/screen-permissions-provider";
 import type {
   User,
   UserListResponse,
@@ -80,11 +82,18 @@ export function useUnblockUser() {
 
 export function useChangeRole() {
   const qc = useQueryClient();
+  const { user: currentUser, refresh: refreshAuth } = useAuth();
+  const { reload: reloadPermissions } = useScreenPermissions();
   return useMutation({
     mutationFn: ({ userId, data }: { userId: string; data: ChangeRoleRequest }) =>
       apiPut<User>(`/admin/users/${userId}/role`, data),
-    onSuccess: () => {
+    onSuccess: async (_data, { userId }) => {
       qc.invalidateQueries({ queryKey: ["users"] });
+      // Se o role alterado é do usuário logado, atualizar auth e permissões
+      if (currentUser?.id === userId) {
+        await refreshAuth();
+        await reloadPermissions();
+      }
     },
   });
 }

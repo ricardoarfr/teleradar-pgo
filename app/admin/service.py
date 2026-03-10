@@ -27,6 +27,23 @@ async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User:
     return user
 
 
+def _assert_admin_can_access_user(admin: User, target: User) -> None:
+    """Verifica se o admin tem permissão para agir sobre o usuário alvo.
+
+    MASTER pode agir sobre qualquer usuário.
+    Demais roles só podem agir sobre usuários do(s) seu(s) tenant(s).
+    Levanta 403 se o acesso for negado.
+    """
+    if admin.role == UserRole.MASTER:
+        return
+    admin_tenant_ids = {t.id for t in admin.tenants}
+    if not admin_tenant_ids:
+        raise HTTPException(status_code=403, detail="Acesso negado: admin sem empresa vinculada.")
+    # Verifica se o alvo compartilha pelo menos um tenant com o admin
+    if target.tenant_id not in admin_tenant_ids:
+        raise HTTPException(status_code=403, detail="Acesso negado a este usuário.")
+
+
 async def list_pending_users(db: AsyncSession, admin: User) -> list[User]:
     query = select(User).where(User.status == UserStatus.PENDING, User.is_active == True)
 
@@ -86,6 +103,7 @@ async def list_users(
 
 async def initiate_approval(db: AsyncSession, user_id: UUID, admin: User) -> None:
     user = await get_user_by_id(db, user_id)
+    _assert_admin_can_access_user(admin, user)
     if user.status != UserStatus.PENDING:
         raise HTTPException(status_code=400, detail="Usuário não está pendente")
 
@@ -118,6 +136,7 @@ async def confirm_approval(db: AsyncSession, user_id: UUID, code: str, admin: Us
 
     token_obj.used = True
     user = await get_user_by_id(db, user_id)
+    _assert_admin_can_access_user(admin, user)
     user.status = UserStatus.APPROVED
     user.updated_at = datetime.utcnow()
 
@@ -135,6 +154,7 @@ async def confirm_approval(db: AsyncSession, user_id: UUID, code: str, admin: Us
 
 async def block_user(db: AsyncSession, user_id: UUID, admin: User, reason: str | None = None) -> User:
     user = await get_user_by_id(db, user_id)
+    _assert_admin_can_access_user(admin, user)
     if user.role == UserRole.MASTER:
         raise HTTPException(status_code=403, detail="Não é possível bloquear o MASTER")
     if admin.role == UserRole.ADMIN and user.role == UserRole.ADMIN:
@@ -150,6 +170,7 @@ async def block_user(db: AsyncSession, user_id: UUID, admin: User, reason: str |
 
 async def unblock_user(db: AsyncSession, user_id: UUID, admin: User) -> User:
     user = await get_user_by_id(db, user_id)
+    _assert_admin_can_access_user(admin, user)
     user.status = UserStatus.APPROVED
     user.login_attempts = 0
     user.locked_until = None
@@ -167,6 +188,7 @@ async def change_user_role(db: AsyncSession, user_id: UUID, new_role: UserRole, 
         raise HTTPException(status_code=403, detail="Apenas MASTER pode promover a ADMIN")
 
     user = await get_user_by_id(db, user_id)
+    _assert_admin_can_access_user(admin, user)
     user.role = new_role
     user.updated_at = datetime.utcnow()
     db.add(AuditLog(user_id=admin.id, action="CHANGE_ROLE", details={"target": str(user_id), "new_role": new_role.value}))
@@ -177,6 +199,7 @@ async def change_user_role(db: AsyncSession, user_id: UUID, new_role: UserRole, 
 
 async def change_user_password(db: AsyncSession, user_id: UUID, new_password: str, admin: User) -> User:
     user = await get_user_by_id(db, user_id)
+    _assert_admin_can_access_user(admin, user)
     if user.role == UserRole.MASTER and admin.role != UserRole.MASTER:
         raise HTTPException(status_code=403, detail="Apenas MASTER pode alterar a senha de outro MASTER")
 
@@ -190,6 +213,7 @@ async def change_user_password(db: AsyncSession, user_id: UUID, new_password: st
 
 async def change_user_tenant(db: AsyncSession, user_id: UUID, tenant_id: UUID | None, admin: User) -> User:
     user = await get_user_by_id(db, user_id)
+    _assert_admin_can_access_user(admin, user)
 
     if tenant_id is not None:
         result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
@@ -220,18 +244,21 @@ async def change_user_tenant(db: AsyncSession, user_id: UUID, tenant_id: UUID | 
     return user
 
 
-async def get_user_tenants(db: AsyncSession, user_id: UUID) -> list[Tenant]:
+async def get_user_tenants(db: AsyncSession, user_id: UUID, admin: User | None = None) -> list[Tenant]:
     result = await db.execute(
         select(User).where(User.id == user_id).options(selectinload(User.tenants))
     )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    if admin is not None:
+        _assert_admin_can_access_user(admin, user)
     return user.tenants
 
 
 async def add_user_to_tenant(db: AsyncSession, user_id: UUID, tenant_id: UUID, admin: User) -> None:
     user = await get_user_by_id(db, user_id)
+    _assert_admin_can_access_user(admin, user)
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
     if not tenant:
@@ -257,6 +284,7 @@ async def add_user_to_tenant(db: AsyncSession, user_id: UUID, tenant_id: UUID, a
 
 async def remove_user_from_tenant(db: AsyncSession, user_id: UUID, tenant_id: UUID, admin: User) -> None:
     user = await get_user_by_id(db, user_id)
+    _assert_admin_can_access_user(admin, user)
 
     await db.execute(
         delete(user_tenants_table).where(
@@ -275,3 +303,49 @@ async def remove_user_from_tenant(db: AsyncSession, user_id: UUID, tenant_id: UU
         details={"target": str(user_id), "tenant_id": str(tenant_id)},
     ))
     await db.commit()
+
+
+async def admin_create_user(
+    db: AsyncSession,
+    name: str,
+    email: str,
+    password: str,
+    role: UserRole,
+    admin: User,
+) -> User:
+    """Cria um usuário já aprovado com role definida pelo admin.
+
+    Regras:
+    - Ninguém pode criar MASTER via API.
+    - Apenas MASTER pode criar ADMIN.
+    - Role padrão é STAFF se não informado.
+    """
+    from sqlalchemy import select as _select
+    from app.auth.service import hash_password
+
+    if role == UserRole.MASTER:
+        raise HTTPException(status_code=403, detail="Não é possível criar usuário MASTER via API.")
+    if role == UserRole.ADMIN and admin.role != UserRole.MASTER:
+        raise HTTPException(status_code=403, detail="Apenas MASTER pode criar usuários ADMIN.")
+
+    existing = await db.execute(_select(User).where(User.email == email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
+
+    new_user = User(
+        name=name,
+        email=email,
+        password_hash=hash_password(password),
+        role=role,
+        status=UserStatus.APPROVED,
+    )
+    db.add(new_user)
+    await db.flush()
+    db.add(AuditLog(
+        user_id=admin.id,
+        action="ADMIN_CREATE_USER",
+        details={"created_user_email": email, "role": role.value},
+    ))
+    await db.commit()
+    await db.refresh(new_user)
+    return new_user

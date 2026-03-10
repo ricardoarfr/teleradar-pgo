@@ -16,6 +16,7 @@ import { usePartners } from "@/hooks/use-partners";
 import type { UserStatus } from "@/types/user";
 import { formatDate } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Eye, Plus, Search } from "lucide-react";
+import { useScreenAccess } from "@/hooks/use-screen-access";
 
 export function PartnersTable() {
   const [search, setSearch] = useState("");
@@ -32,6 +33,7 @@ export function PartnersTable() {
   };
 
   const { data, isLoading } = usePartners(params);
+  const { create: canCreate } = useScreenAccess("partners");
 
   const partners = data?.results ?? [];
   const total = data?.total ?? 0;
@@ -76,12 +78,14 @@ export function PartnersTable() {
           </Select>
         </div>
 
-        <Link href="/partners/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4" />
-            Novo Parceiro
-          </Button>
-        </Link>
+        {canCreate && (
+          <Link href="/partners/new">
+            <Button size="sm">
+              <Plus className="h-4 w-4" />
+              Novo Parceiro
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Tabela */}

@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useCreateTenant } from "@/hooks/use-tenants";
 import { toast } from "@/components/ui/use-toast";
+import { ActionGuard } from "@/components/layout/action-guard";
 
-export default function NewCompanyPage() {
+function NewCompanyContent() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -81,5 +82,13 @@ export default function NewCompanyPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function NewCompanyPage() {
+  return (
+    <ActionGuard screenKey="companies" action="create">
+      <NewCompanyContent />
+    </ActionGuard>
   );
 }

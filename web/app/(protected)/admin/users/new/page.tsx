@@ -17,11 +17,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { api } from "@/lib/api";
+import { apiPost } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import type { UserRole } from "@/types/user";
 import { formatRole } from "@/lib/utils";
+import { ActionGuard } from "@/components/layout/action-guard";
 
 const schema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -32,9 +33,9 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const ROLES: UserRole[] = ["ADMIN", "MANAGER", "STAFF"];
+const ROLES: UserRole[] = ["ADMIN", "MANAGER", "STAFF", "PARTNER"];
 
-export default function NewUserPage() {
+function NewUserContent() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -54,16 +55,15 @@ export default function NewUserPage() {
   const onSubmit = async (data: FormData) => {
     setApiError(null);
     try {
-      await api.post("/auth/register", {
+      await apiPost("/admin/users", {
         name: data.name,
         email: data.email,
         password: data.password,
+        role: data.role,
       });
-
-      // Se não for STAFF, altera o role depois (requer aprovação antes, portanto aviso)
       toast({
         title: "Usuário criado!",
-        description: "O usuário foi cadastrado e aguarda aprovação.",
+        description: `Usuário criado com perfil ${formatRole(data.role)} e já aprovado.`,
       });
       router.push("/admin/users");
     } catch (err: any) {
@@ -122,7 +122,7 @@ export default function NewUserPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                O role pode ser alterado após aprovação do usuário.
+                O usuário será criado com este perfil e já estará aprovado.
               </p>
             </div>
 
@@ -144,5 +144,13 @@ export default function NewUserPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function NewUserPage() {
+  return (
+    <ActionGuard screenKey="admin.users" action="create">
+      <NewUserContent />
+    </ActionGuard>
   );
 }
