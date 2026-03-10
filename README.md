@@ -1,298 +1,286 @@
 # Teleradar PGO
 
-Centraliza em um só lugar o que hoje está espalhado: contratos, equipes de campo e relatórios de produtividade — conectando o back-office do provedor com as ferramentas que os técnicos já usam.
+**Back-office unificado para provedores de internet (ISPs)** — centraliza contratos, equipes de campo e relatórios de produtividade em um único sistema multi-tenant, conectando-se em tempo real ao [Produttivo](https://app.produttivo.com.br) sem alterar a forma como os técnicos trabalham.
 
-Multi-tenant, RBAC, seguro e escalável.
+---
 
-**Stack:** Python 3.11 + FastAPI + PostgreSQL + SQLAlchemy 2.0 (async) + Alembic + JWT
+## Visão Geral
+
+```
+Problema: Dados espalhados entre Produttivo, planilhas e e-mails.
+Solução:  Um back-office único com sync em tempo real, contratos, gestão
+          de equipes, catálogo de serviços e relatórios consolidados.
+```
+
+**Principais funcionalidades:**
+
+- Gestão de contratos (status, serviços, anexos, log de auditoria)
+- Integração em tempo real com a API do Produttivo (atividades de campo, formulários)
+- Catálogo de serviços com LPU — Lista de Preço Única por parceiro
+- Controle de pagamentos vinculados a contratos
+- Gestão de parceiros/subcontratados (CPF/CNPJ, endereço, contato)
+- Relatórios de produtividade agrupados por técnico, atividade e localização
+- Controle de acesso por papéis (RBAC) com isolamento multi-tenant
 
 ---
 
 ## Arquitetura
 
-```
-Client -> FastAPI -> PostgreSQL
-                 -> SMTP
-                 -> Google OAuth2
-                 -> Produttivo API (por tenant)
+```mermaid
+flowchart TD
+    A[Browser / Next.js 15] -->|HTTPS + JWT| B[FastAPI 0.115]
+    B --> C[(PostgreSQL 14+)]
+    B --> D[Produttivo API]
+    B --> E[Resend — E-mail]
+    B --> F[Google OAuth2]
+    B --> G[Playwright — Login automático]
 ```
 
-Rotas principais:
-- `/auth` — Autenticação
-- `/admin` — Administração
-- `/users` — Perfis
-- `/tenants` — Tenants
-- `/client` — Portal Cliente
-- `/modules/produttivo` — Integração Produttivo
+Detalhes completos em [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ---
 
 ## Stack Tecnológica
 
-| Camada | Tecnologia |
-|--------|-----------|
-| Framework | FastAPI 0.115 |
-| ORM | SQLAlchemy 2.0 (async) |
-| Banco | PostgreSQL (asyncpg) |
-| Migrações | Alembic |
-| Auth | JWT (python-jose) + bcrypt |
-| Config | pydantic-settings + .env |
-| Email | aiosmtplib |
-| HTTP Client | httpx (async) |
-| Deploy | Render.com |
+| Camada | Tecnologia | Versão |
+|--------|-----------|--------|
+| Framework backend | FastAPI | 0.115.0 |
+| Servidor ASGI | Uvicorn | 0.30.6 |
+| Linguagem | Python | 3.11+ |
+| ORM | SQLAlchemy (async) | 2.0.36 |
+| Banco de dados | PostgreSQL | 14+ |
+| Driver async | asyncpg | 0.30.0 |
+| Validação | Pydantic v2 | 2.10.6 |
+| Auth | JWT (python-jose) + bcrypt | - |
+| Migrações | Alembic | 1.13.3 |
+| Cliente HTTP | httpx | 0.27.2 |
+| E-mail | Resend | 2.10.0 |
+| Automação de browser | Playwright | 1.49.0 |
+| Processamento de dados | pandas + openpyxl | 2.2.3 / 3.1.5 |
+| Framework frontend | Next.js | 15.5.12 |
+| Biblioteca UI | React | 18.3.1 |
+| Componentes | Radix UI | - |
+| Estilo | Tailwind CSS | 3.4.17 |
+| Estado servidor | TanStack React Query | 5.64.1 |
+| Formulários | React Hook Form + Zod | - |
+| Deploy | Render.com | - |
 
 ---
 
-## Pré-requisitos
+## Estrutura do Repositório
 
-- Python 3.11+
-- PostgreSQL 14+
-- `pg_dump` / `psql` (para scripts de backup)
-
----
-
-## Como rodar localmente
-
-```bash
-# 1. Clonar o repositório
-git clone https://github.com/ricardoarfr/teleradar-pgo.git
-cd teleradar-pgo
-
-# 2. Criar ambiente virtual
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# 3. Instalar dependências
-pip install -r requirements.txt
-
-# 4. Configurar variáveis de ambiente
-cp .env.example .env
-# Editar .env com seus valores reais
-
-# 5. Executar migrations
-alembic upgrade head
-
-# 6. Iniciar o servidor
-uvicorn app.main:app --reload
-
-# API disponível em: http://localhost:8000
-# Documentação:      http://localhost:8000/docs
+```
+teleradar-pgo/
+├── app/                    # Backend FastAPI
+│   ├── main.py             # Entry point + registro de routers
+│   ├── config/             # Settings e logging
+│   ├── database/           # Engine async + session factory
+│   ├── auth/               # Autenticação e JWT
+│   ├── admin/              # Painel admin (aprovação, bloqueio, roles)
+│   ├── rbac/               # RBAC + contexto multi-tenant
+│   ├── tenants/            # Gestão de tenants
+│   ├── users/              # Perfis de usuário
+│   ├── partner_portal/     # Portal do parceiro
+│   ├── modules/
+│   │   ├── contracts/      # Contratos
+│   │   ├── projects/       # Projetos
+│   │   ├── materials/      # Estoque de materiais
+│   │   ├── payments/       # Pagamentos
+│   │   ├── partners/       # Perfis de parceiros
+│   │   ├── reports/        # Relatórios customizados
+│   │   ├── catalogo/       # Catálogo (LPU, classes, serviços, unidades)
+│   │   └── produttivo/     # Integração Produttivo (API + relatórios)
+│   └── utils/              # E-mail, respostas padronizadas
+├── web/                    # Frontend Next.js
+│   ├── app/
+│   │   ├── (auth)/         # Rotas públicas (login, cadastro, recuperação)
+│   │   └── (protected)/    # Rotas protegidas (dashboard, módulos)
+│   ├── components/         # Componentes React reutilizáveis
+│   ├── hooks/              # Custom hooks
+│   ├── lib/                # API client, helpers
+│   └── types/              # Tipos TypeScript
+├── alembic/                # Migrações do banco
+│   └── versions/           # Arquivos de migração
+├── tests/                  # Testes
+├── scripts/                # Scripts utilitários
+├── docker-compose.dev.yml  # PostgreSQL local para desenvolvimento
+├── render.yaml             # Blueprint de deploy no Render.com
+├── requirements.txt        # Dependências Python
+└── CLAUDE.md               # Diretrizes para Claude Code
 ```
 
 ---
 
-## Criar o usuário MASTER (primeiro acesso)
+## Como Rodar Localmente
 
-O MASTER é criado via endpoint protegido por `BOOTSTRAP_SECRET`. Funciona apenas se não existir nenhum MASTER no banco.
+### Pré-requisitos
+
+- Python 3.11+
+- Node.js 20+
+- Docker (para o PostgreSQL local)
+
+### Backend
+
+```bash
+# 1. Clone o repositório
+git clone https://github.com/ricardoarfr/teleradar-pgo.git
+cd teleradar-pgo
+
+# 2. Crie o ambiente virtual
+python -m venv .venv
+source .venv/bin/activate        # Linux/macOS
+# .venv\Scripts\activate         # Windows
+
+# 3. Instale as dependências
+pip install -r requirements.txt
+playwright install chromium      # Para o login automático do Produttivo
+
+# 4. Configure as variáveis de ambiente
+cp .env.example .env
+# Edite o .env com seus valores reais
+
+# 5. Suba o PostgreSQL local
+docker-compose -f docker-compose.dev.yml up -d
+
+# 6. Execute as migrations
+alembic upgrade head
+
+# 7. Inicie o servidor
+uvicorn app.main:app --reload
+
+# API: http://localhost:8000
+# Docs: http://localhost:8000/docs
+```
+
+### Frontend
+
+```bash
+cd web
+npm install
+npm run dev
+
+# Web: http://localhost:3000
+```
+
+### Criar o Usuário MASTER (primeiro acesso)
 
 ```bash
 curl -X POST http://localhost:8000/auth/master/bootstrap \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Administrador Master",
-    "email": "master@teleradar.com.br",
-    "password": "senha-segura-aqui",
-    "bootstrap_secret": "seu-BOOTSTRAP_SECRET-do-env"
+    "email": "master@empresa.com",
+    "password": "senha-segura",
+    "bootstrap_secret": "valor-de-BOOTSTRAP_SECRET-no-.env"
   }'
 ```
 
-**Importante:** Após criar o MASTER, o endpoint retorna 403 permanentemente.
+> Após a criação, o endpoint retorna 403 permanentemente.
+
+---
+
+## Deploy (Render.com)
+
+1. Faça push do repositório para o GitHub
+2. Acesse [render.com](https://render.com) → **New → Blueprint**
+3. Selecione o repositório — o Render detecta o `render.yaml` automaticamente
+4. Configure as variáveis manuais no dashboard:
+   - `RESEND_API_KEY`
+   - `ADMIN_MASTER_EMAIL`
+   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (opcional)
+5. Clique em **Apply** — o deploy inicia automaticamente
+
+O `render.yaml` provisiona:
+- Web Service (API FastAPI) + PostgreSQL Free Tier
+- `SECRET_KEY` e `BOOTSTRAP_SECRET` gerados automaticamente
+- Migrations executadas no build (`alembic upgrade head`)
+
+> **Limite Free Tier:** O banco PostgreSQL expira em 30 dias. Veja a seção de upgrade abaixo.
+
+---
+
+## Variáveis de Ambiente
+
+| Variável | Obrigatório | Descrição |
+|----------|-------------|-----------|
+| `DATABASE_URL` | Sim | `postgresql+asyncpg://user:pass@host:5432/db` |
+| `SECRET_KEY` | Sim | Chave para JWT (`openssl rand -hex 32`) |
+| `BOOTSTRAP_SECRET` | Sim | Proteção do endpoint `/auth/master/bootstrap` |
+| `RESEND_API_KEY` | Sim | API key da Resend para e-mails |
+| `ADMIN_MASTER_EMAIL` | Sim | E-mail que recebe códigos de aprovação |
+| `CORS_ORIGINS` | Sim | URLs permitidas (ex: `https://frontend.com`) |
+| `GOOGLE_CLIENT_ID` | Não | OAuth2 Google |
+| `GOOGLE_CLIENT_SECRET` | Não | OAuth2 Google |
+| `DB_CREATED_AT` | Não | Data de criação do banco (alerta de expiração) |
 
 ---
 
 ## Módulo Produttivo
 
-Integração com a plataforma [Produttivo](https://app.produttivo.com.br) para trazer as atividades de campo para dentro do back-office — sem exigir que os técnicos mudem a forma como trabalham.
+Integração central do sistema. Busca atividades de campo em tempo real da API do Produttivo sem armazenar os dados localmente.
 
-### Como funciona
-
-Cada tenant configura suas próprias credenciais (cookie de sessão + account_id). O sistema busca os dados diretamente da API do Produttivo em tempo real — sem armazenar registros de campo no banco local.
-
-### Configuração por tenant
+### Configuração por Tenant
 
 ```
-POST /modules/produttivo/config/cookie      → salva o cookie de sessão
-POST /modules/produttivo/config/account-id  → salva o account_id da conta
-GET  /modules/produttivo/config/validate    → valida se o cookie ainda é válido
+POST /modules/produttivo/config/cookie       → salvar cookie de sessão
+POST /modules/produttivo/config/account-id   → salvar account_id
+POST /modules/produttivo/config/gerar-cookie → login automático via Playwright
+GET  /modules/produttivo/config/validate     → validar cookie
 ```
 
-### Relatório de Atividades por Usuário
-
-```
-GET /modules/produttivo/relatorio/usuario
-```
-
-Retorna linhas agrupadas por `(work_id, user_id)` com as colunas:
-
-| Coluna | Descrição |
-|--------|-----------|
-| Cliente | Local/cliente do work (resource_place) |
-| Nome da Atividade | Título do work (não do form_fill) |
-| Usuário | Nome completo + e-mail |
-| Qtd | Quantidade de form_fills no grupo |
-| Data Inicial | MIN(created_at) do grupo |
-| Data Final | MAX(created_at) do grupo |
-| CABO (m) | Soma de metragem de cabo (form_id 359797) |
-| CORDOALHA (m) | Soma de metragem de cordoalha (form_id 359797) |
-| CEO | Contagem de fusões CEO (form_id 375197) |
-| CTO | Contagem de fusões CTO (form_id 375197) |
-| DIO | Contagem de fusões DIO (form_id 375197) |
-
-Parâmetros de filtro: `data_inicio`, `data_fim`, `user_ids[]`, `form_ids[]`, `resource_place_ids[]`, `work_ids[]`.
-
-### Modelos de formulário implementados
+### Formulários Implementados
 
 | Form ID | Nome | Extrai |
 |---------|------|--------|
-| `359797` | LANÇAMENTO DE CABO - V4 | `cabo_m`, `cordoalha_m` (via `PONTA INICIAL(METROS)` e `PONTA FINAL(METROS)`) |
-| `375197` | FUSÕES PROVEDOR V5 | `ceo`, `cto`, `dio` (via campo `ATIVIDADE`) |
+| `359797` | LANÇAMENTO DE CABO V4 | `cabo_m`, `cordoalha_m` |
+| `375197` | FUSÕES PROVEDOR V5 | `ceo`, `cto`, `dio` |
 
-**Lógica CABO vs CORDOALHA:** classifica como cordoalha se a palavra `CORDOALHA` aparecer no campo `TIPO DE LANÇAMENTO` **ou** `ESPECIFICAÇÃO DO CABO`. Caso contrário, assume cabo.
-
-### Endpoint de debug
+### Relatórios
 
 ```
-GET /modules/produttivo/debug/fill-fields?data_inicio=DD/MM/YYYY&data_fim=DD/MM/YYYY&form_id=359797
+GET /modules/produttivo/relatorio/usuario      → por técnico × atividade
+GET /modules/produttivo/relatorio/atividades   → todas as atividades
 ```
 
-Retorna os `field_values` crus dos primeiros 3 form_fills de um formulário — útil para inspecionar os nomes exatos dos campos retornados pela API.
+Parâmetros: `data_inicio`, `data_fim` (DD/MM/YYYY), `user_ids[]`, `form_ids[]`, `resource_place_ids[]`, `work_ids[]`
 
-### Adicionar novo modelo de formulário
-
-1. Criar `app/modules/produttivo/forms/meu_form.py` estendendo `BaseFormModel`
-2. Implementar `extrair_dados(fill)` e `extrair_producao(fill)`
-3. Registrar em `app/modules/produttivo/forms/registry.py`
+Retorno: JSON ou Excel com Cliente, Atividade, Usuário, Qtd, Datas, CABO (m), CORDOALHA (m), CEO, CTO, DIO.
 
 ---
 
-## Como fazer deploy no Render
+## Hierarquia de Roles
 
-1. Faça fork ou push do repositório para o GitHub
-2. Acesse [render.com](https://render.com) -> New -> Blueprint
-3. Selecione o repositório `teleradar-pgo`
-4. O Render detecta o `render.yaml` automaticamente
-5. Configure as variáveis de ambiente manuais no dashboard:
-   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`
-   - `ADMIN_MASTER_EMAIL`
-   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (opcional)
-6. Clique em **Apply** — o deploy inicia automaticamente
-
-O `render.yaml` já configura:
-- Web Service (Free) com `alembic upgrade head` no build
-- PostgreSQL (Free) com conexão automática via `DATABASE_URL`
-- `SECRET_KEY` e `BOOTSTRAP_SECRET` gerados automaticamente
-
----
-
-## Comandos Alembic
-
-```bash
-# Criar nova migration
-alembic revision --autogenerate -m "descricao da mudanca"
-
-# Aplicar migrations pendentes
-alembic upgrade head
-
-# Reverter última migration
-alembic downgrade -1
-
-# Ver histórico
-alembic history
-
-# Ver migration atual
-alembic current
+```
+MASTER  → Acesso total a todos os tenants
+ADMIN   → Gerencia recursos e usuários do tenant
+MANAGER → Acesso operacional, não pode aprovar usuários
+STAFF   → Acesso de leitura e entrada de dados
+PARTNER → Portal restrito ao próprio perfil e contratos
 ```
 
----
-
-## Endpoints da API
-
-### Auth
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| POST | `/auth/register` | Cadastro de novo usuário |
-| POST | `/auth/login` | Login email + senha |
-| POST | `/auth/refresh` | Renovar access token |
-| POST | `/auth/logout` | Invalidar refresh token |
-| POST | `/auth/forgot-password` | Solicitar reset de senha |
-| POST | `/auth/reset-password` | Confirmar reset com token |
-| POST | `/auth/change-password` | Alterar senha (autenticado) |
-| GET | `/auth/me` | Dados do usuário autenticado |
-| GET | `/auth/google` | Redirect OAuth2 Google |
-| GET | `/auth/google/callback` | Callback OAuth2 Google |
-| POST | `/auth/master/bootstrap` | Criar MASTER (só 1 vez) |
-
-### Admin (requer ADMIN ou MASTER)
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/admin/users` | Listar usuários com filtros |
-| GET | `/admin/users/pending` | Listar pendentes |
-| GET | `/admin/users/{id}` | Detalhes de um usuário |
-| POST | `/admin/users/{id}/approve` | Iniciar aprovação (envia código) |
-| POST | `/admin/users/confirm-approval` | Confirmar aprovação com código |
-| POST | `/admin/users/{id}/block` | Bloquear usuário |
-| POST | `/admin/users/{id}/unblock` | Desbloquear usuário |
-| PUT | `/admin/users/{id}/role` | Alterar role |
-
-### Users (autenticado)
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/users/me` | Ver perfil |
-| PUT | `/users/me` | Editar perfil |
-
-### Tenants (requer ADMIN ou MASTER)
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| POST | `/tenants/` | Criar tenant |
-| GET | `/tenants/` | Listar tenants |
-| GET | `/tenants/{id}` | Detalhes do tenant |
-| PUT | `/tenants/{id}` | Atualizar tenant |
-
-### Portal do Cliente (requer role CLIENT)
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/client/me` | Dados do cliente |
-| GET | `/client/overview` | Dashboard |
-
-### Módulo Produttivo
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| POST | `/modules/produttivo/config/cookie` | Salvar cookie de sessão |
-| POST | `/modules/produttivo/config/account-id` | Salvar account_id |
-| GET | `/modules/produttivo/config/validate` | Validar cookie |
-| GET | `/modules/produttivo/relatorio/usuario` | Relatório por usuário |
-| GET | `/modules/produttivo/debug/fill-fields` | Inspecionar campos crus (staff) |
+Detalhes completos em [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ---
 
-## Checklist de Segurança
+## Documentação Adicional
 
-- [x] Senhas com bcrypt (cost factor 12)
-- [x] JWT HS256 com secret via env
-- [x] Rate limiting: 5 tentativas -> lock 15 min
-- [x] Lock automático de conta
-- [x] Tokens de uso único com TTL (reset senha, aprovação)
-- [x] Audit log em toda ação de autenticação
-- [x] .env nunca commitado (.gitignore)
-- [x] SQL Injection protegido via SQLAlchemy ORM
-- [x] Validação de input via Pydantic v2
-- [x] CORS configurável via env
-- [x] HTTPS enforçado em produção (Render garante)
-- [x] Isolamento de tenant (Produttivo config por tenant_id)
-- [x] Hierarquia de roles aplicada em todos os endpoints
-- [x] MASTER criado apenas via bootstrap (endpoint protegido por secret)
-- [x] Pool de conexões configurado com limites seguros (Free Tier)
+| Arquivo | Conteúdo |
+|---------|---------|
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Arquitetura detalhada, módulos, fluxos de dados |
+| [API.md](./API.md) | Todos os endpoints com exemplos |
+| [DATA_MODEL.md](./DATA_MODEL.md) | Modelos de dados, tabelas, relacionamentos |
+| [DEVELOPMENT.md](./DEVELOPMENT.md) | Guia completo para desenvolvedores |
+| [AI_CONTEXT.md](./AI_CONTEXT.md) | Contexto para assistentes de IA |
 
 ---
 
-## Upgrade Path — Render Free -> Produção
+## Upgrade Path — Free → Produção
 
 | Quando agir | Serviço | Plano | Custo |
-|---|---|---|---|
+|-------------|---------|-------|-------|
 | Banco expira (30 dias) | Render Postgres | Basic-256mb | $6/mês |
 | Cold start inaceitável | Render Web | Starter | $7/mês |
 | Storage > 800 MB | Render Postgres | Basic-256mb | $6/mês |
-| Usuários em produção real | Ambos | Starter | $13/mês |
-| Performance crítica | Ambos | Standard | $44/mês |
+| Produção real | Ambos | Starter | $13/mês |
 
-**Workaround gratuito para hibernação:** Configure o [UptimeRobot](https://uptimerobot.com) (free) para fazer ping em `/health` a cada 14 minutos.
+**Workaround gratuito para hibernação:** Configure o [UptimeRobot](https://uptimerobot.com) para fazer ping em `/health` a cada 14 minutos.
