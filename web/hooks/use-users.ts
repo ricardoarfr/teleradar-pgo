@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, apiPut } from "@/lib/api";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import type {
   User,
   UserListResponse,
@@ -108,6 +108,43 @@ export function useChangeUserTenant() {
     onSuccess: (_data, { userId }) => {
       qc.invalidateQueries({ queryKey: ["users", userId] });
       qc.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+}
+
+export interface TenantItem {
+  id: string;
+  name: string;
+}
+
+export function useUserTenants(userId: string) {
+  return useQuery({
+    queryKey: ["users", userId, "tenants"],
+    queryFn: () => apiGet<TenantItem[]>(`/admin/users/${userId}/tenants`),
+    enabled: !!userId,
+  });
+}
+
+export function useAddUserTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, tenantId }: { userId: string; tenantId: string }) =>
+      apiPost(`/admin/users/${userId}/tenants/${tenantId}`),
+    onSuccess: (_data, { userId }) => {
+      qc.invalidateQueries({ queryKey: ["users", userId, "tenants"] });
+      qc.invalidateQueries({ queryKey: ["users", userId] });
+    },
+  });
+}
+
+export function useRemoveUserTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, tenantId }: { userId: string; tenantId: string }) =>
+      apiDelete(`/admin/users/${userId}/tenants/${tenantId}`),
+    onSuccess: (_data, { userId }) => {
+      qc.invalidateQueries({ queryKey: ["users", userId, "tenants"] });
+      qc.invalidateQueries({ queryKey: ["users", userId] });
     },
   });
 }

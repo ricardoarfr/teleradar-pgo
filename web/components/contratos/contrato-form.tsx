@@ -46,7 +46,7 @@ const contratoSchema = z.object({
   client_id: z.string().optional(),
   estado: z.string().max(2).optional(),
   cidade: z.string().max(100).optional(),
-  start_date: z.string().optional(),
+  start_date: z.string().min(1, "Data de início é obrigatória"),
   end_date: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -162,7 +162,7 @@ export function ContratoForm(props: ContratoFormProps) {
       estado: data.estado || undefined,
       cidade: data.cidade || undefined,
       servico_ids: selectedServicos.map((s) => s.id),
-      start_date: data.start_date || undefined,
+      start_date: data.start_date,
       end_date: data.end_date || undefined,
       notes: data.notes || undefined,
     };
@@ -375,8 +375,11 @@ export function ContratoForm(props: ContratoFormProps) {
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="start_date">Data Início</Label>
+                <Label htmlFor="start_date">Data Início *</Label>
                 <Input id="start_date" type="date" {...register("start_date")} />
+                {errors.start_date && (
+                  <p className="text-xs text-destructive">{errors.start_date.message}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="end_date">Data Fim</Label>

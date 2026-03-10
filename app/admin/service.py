@@ -5,10 +5,12 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, delete
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.auth.models import AuditLog, Token, TokenType, User, UserRole, UserStatus
+from app.auth.models import AuditLog, Token, TokenType, User, UserRole, UserStatus, user_tenants as user_tenants_table
 from app.auth.service import hash_password
 from app.config.settings import settings
 from app.tenants.models import Tenant
@@ -185,6 +187,17 @@ async def change_user_tenant(db: AsyncSession, user_id: UUID, tenant_id: UUID | 
         tenant = result.scalar_one_or_none()
         if not tenant:
             raise HTTPException(status_code=404, detail="Empresa não encontrada")
+        # Sync to user_tenants N:N table
+        await db.execute(
+            pg_insert(user_tenants_table)
+            .values(user_id=user_id, tenant_id=tenant_id)
+            .on_conflict_do_nothing()
+        )
+    else:
+        # Clear all N:N associations when removing primary tenant
+        await db.execute(
+            delete(user_tenants_table).where(user_tenants_table.c.user_id == user_id)
+        )
 
     user.tenant_id = tenant_id
     user.updated_at = datetime.utcnow()
@@ -196,3 +209,60 @@ async def change_user_tenant(db: AsyncSession, user_id: UUID, tenant_id: UUID | 
     await db.commit()
     await db.refresh(user)
     return user
+
+
+async def get_user_tenants(db: AsyncSession, user_id: UUID) -> list[Tenant]:
+    result = await db.execute(
+        select(User).where(User.id == user_id).options(selectinload(User.tenants))
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    return user.tenants
+
+
+async def add_user_to_tenant(db: AsyncSession, user_id: UUID, tenant_id: UUID, admin: User) -> None:
+    user = await get_user_by_id(db, user_id)
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada")
+
+    await db.execute(
+        pg_insert(user_tenants_table)
+        .values(user_id=user_id, tenant_id=tenant_id)
+        .on_conflict_do_nothing()
+    )
+    # Set as primary if the user has no primary tenant yet
+    if user.tenant_id is None:
+        user.tenant_id = tenant_id
+        user.updated_at = datetime.utcnow()
+
+    db.add(AuditLog(
+        user_id=admin.id,
+        action="ADD_USER_TENANT",
+        details={"target": str(user_id), "tenant_id": str(tenant_id)},
+    ))
+    await db.commit()
+
+
+async def remove_user_from_tenant(db: AsyncSession, user_id: UUID, tenant_id: UUID, admin: User) -> None:
+    user = await get_user_by_id(db, user_id)
+
+    await db.execute(
+        delete(user_tenants_table).where(
+            user_tenants_table.c.user_id == user_id,
+            user_tenants_table.c.tenant_id == tenant_id,
+        )
+    )
+    # If primary tenant was removed, clear users.tenant_id
+    if user.tenant_id == tenant_id:
+        user.tenant_id = None
+        user.updated_at = datetime.utcnow()
+
+    db.add(AuditLog(
+        user_id=admin.id,
+        action="REMOVE_USER_TENANT",
+        details={"target": str(user_id), "tenant_id": str(tenant_id)},
+    ))
+    await db.commit()
