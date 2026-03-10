@@ -2,11 +2,17 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import select, func, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.projects.models import Project, ProjectStatus
 from app.modules.projects.schemas import ProjectCreate, ProjectUpdate
+
+
+def _tenant_filter(tenant_ids: list[UUID]):
+    if tenant_ids:
+        return Project.tenant_id.in_(tenant_ids)
+    return true()
 
 
 async def create_project(db: AsyncSession, tenant_id: UUID, data: ProjectCreate) -> Project:
@@ -26,13 +32,13 @@ async def create_project(db: AsyncSession, tenant_id: UUID, data: ProjectCreate)
 
 async def list_projects(
     db: AsyncSession,
-    tenant_id: UUID,
+    tenant_ids: list[UUID],
     page: int = 1,
     per_page: int = 20,
     status: ProjectStatus | None = None,
 ) -> tuple[list[Project], int]:
-    query = select(Project).where(Project.tenant_id == tenant_id)
-    count_query = select(func.count()).select_from(Project).where(Project.tenant_id == tenant_id)
+    query = select(Project).where(_tenant_filter(tenant_ids))
+    count_query = select(func.count()).select_from(Project).where(_tenant_filter(tenant_ids))
 
     if status:
         query = query.where(Project.status == status)
@@ -47,9 +53,9 @@ async def list_projects(
     return projects, total
 
 
-async def get_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> Project:
+async def get_project(db: AsyncSession, tenant_ids: list[UUID], project_id: UUID) -> Project:
     result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.tenant_id == tenant_id)
+        select(Project).where(Project.id == project_id, _tenant_filter(tenant_ids))
     )
     project = result.scalar_one_or_none()
     if not project:
@@ -58,9 +64,9 @@ async def get_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> Pr
 
 
 async def update_project(
-    db: AsyncSession, tenant_id: UUID, project_id: UUID, data: ProjectUpdate
+    db: AsyncSession, tenant_ids: list[UUID], project_id: UUID, data: ProjectUpdate
 ) -> Project:
-    project = await get_project(db, tenant_id, project_id)
+    project = await get_project(db, tenant_ids, project_id)
 
     if data.name is not None:
         project.name = data.name

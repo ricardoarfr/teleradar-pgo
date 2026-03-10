@@ -18,11 +18,13 @@ _BCRYPT_ROUNDS = 12
 
 
 async def create_partner(db: AsyncSession, data: PartnerCreate, admin: User) -> User:
+    tenant_ids = [t.id for t in admin.tenants]
+
     if admin.role == UserRole.ADMIN:
-        if admin.tenant_id is None:
-            raise HTTPException(status_code=400, detail="Administrador sem tenant associado")
-        if data.tenant_id != admin.tenant_id:
-            raise HTTPException(status_code=403, detail="ADMIN só pode criar parceiros no próprio tenant")
+        if not tenant_ids:
+            raise HTTPException(status_code=400, detail="Administrador sem empresa associada")
+        if data.tenant_id not in tenant_ids:
+            raise HTTPException(status_code=403, detail="ADMIN só pode criar parceiros nas suas empresas")
 
     existing = await db.execute(select(User).where(User.email == data.email))
     if existing.scalar_one_or_none():
@@ -86,9 +88,15 @@ async def list_partners(
         .where(User.role == UserRole.PARTNER, User.is_active == True)
     )
 
-    if admin.role == UserRole.ADMIN and admin.tenant_id:
-        query = query.where(User.tenant_id == admin.tenant_id)
-        count_query = count_query.where(User.tenant_id == admin.tenant_id)
+    # MASTER vê todos; demais roles filtram pelas suas empresas
+    if admin.role != UserRole.MASTER:
+        tenant_ids = [t.id for t in admin.tenants]
+        if tenant_ids:
+            query = query.where(User.tenant_id.in_(tenant_ids))
+            count_query = count_query.where(User.tenant_id.in_(tenant_ids))
+        else:
+            # Usuário sem empresa → não vê nenhum parceiro
+            return [], 0
 
     if status:
         query = query.where(User.status == status)
@@ -117,8 +125,10 @@ async def get_partner(db: AsyncSession, partner_id: UUID, admin: User) -> User:
     if not user:
         raise HTTPException(status_code=404, detail="Parceiro não encontrado")
 
-    if admin.role == UserRole.ADMIN and admin.tenant_id and user.tenant_id != admin.tenant_id:
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    if admin.role != UserRole.MASTER:
+        tenant_ids = [t.id for t in admin.tenants]
+        if user.tenant_id not in tenant_ids:
+            raise HTTPException(status_code=403, detail="Acesso negado")
 
     return user
 

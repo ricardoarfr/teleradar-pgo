@@ -2,11 +2,17 @@ from datetime import datetime, date
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import select, func, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.payments.models import Payment, PaymentStatus
 from app.modules.payments.schemas import PaymentCreate, PaymentUpdate, PaymentMarkPaid
+
+
+def _tenant_filter(tenant_ids: list[UUID]):
+    if tenant_ids:
+        return Payment.tenant_id.in_(tenant_ids)
+    return true()
 
 
 async def create_payment(db: AsyncSession, tenant_id: UUID, data: PaymentCreate) -> Payment:
@@ -26,14 +32,14 @@ async def create_payment(db: AsyncSession, tenant_id: UUID, data: PaymentCreate)
 
 async def list_payments(
     db: AsyncSession,
-    tenant_id: UUID,
+    tenant_ids: list[UUID],
     page: int = 1,
     per_page: int = 20,
     status: PaymentStatus | None = None,
     contract_id: UUID | None = None,
 ) -> tuple[list[Payment], int]:
-    query = select(Payment).where(Payment.tenant_id == tenant_id)
-    count_query = select(func.count()).select_from(Payment).where(Payment.tenant_id == tenant_id)
+    query = select(Payment).where(_tenant_filter(tenant_ids))
+    count_query = select(func.count()).select_from(Payment).where(_tenant_filter(tenant_ids))
 
     if status:
         query = query.where(Payment.status == status)
@@ -51,9 +57,9 @@ async def list_payments(
     return payments, total
 
 
-async def get_payment(db: AsyncSession, tenant_id: UUID, payment_id: UUID) -> Payment:
+async def get_payment(db: AsyncSession, tenant_ids: list[UUID], payment_id: UUID) -> Payment:
     result = await db.execute(
-        select(Payment).where(Payment.id == payment_id, Payment.tenant_id == tenant_id)
+        select(Payment).where(Payment.id == payment_id, _tenant_filter(tenant_ids))
     )
     payment = result.scalar_one_or_none()
     if not payment:
@@ -62,9 +68,9 @@ async def get_payment(db: AsyncSession, tenant_id: UUID, payment_id: UUID) -> Pa
 
 
 async def update_payment(
-    db: AsyncSession, tenant_id: UUID, payment_id: UUID, data: PaymentUpdate
+    db: AsyncSession, tenant_ids: list[UUID], payment_id: UUID, data: PaymentUpdate
 ) -> Payment:
-    payment = await get_payment(db, tenant_id, payment_id)
+    payment = await get_payment(db, tenant_ids, payment_id)
 
     if payment.status == PaymentStatus.PAID:
         raise HTTPException(status_code=422, detail="Pagamento já quitado não pode ser alterado")
@@ -85,9 +91,9 @@ async def update_payment(
 
 
 async def mark_paid(
-    db: AsyncSession, tenant_id: UUID, payment_id: UUID, data: PaymentMarkPaid
+    db: AsyncSession, tenant_ids: list[UUID], payment_id: UUID, data: PaymentMarkPaid
 ) -> Payment:
-    payment = await get_payment(db, tenant_id, payment_id)
+    payment = await get_payment(db, tenant_ids, payment_id)
 
     if payment.status == PaymentStatus.PAID:
         raise HTTPException(status_code=422, detail="Pagamento já quitado")
@@ -102,8 +108,8 @@ async def mark_paid(
     return payment
 
 
-async def cancel_payment(db: AsyncSession, tenant_id: UUID, payment_id: UUID) -> Payment:
-    payment = await get_payment(db, tenant_id, payment_id)
+async def cancel_payment(db: AsyncSession, tenant_ids: list[UUID], payment_id: UUID) -> Payment:
+    payment = await get_payment(db, tenant_ids, payment_id)
 
     if payment.status == PaymentStatus.PAID:
         raise HTTPException(status_code=422, detail="Pagamento já quitado não pode ser cancelado")
@@ -115,12 +121,12 @@ async def cancel_payment(db: AsyncSession, tenant_id: UUID, payment_id: UUID) ->
     return payment
 
 
-async def sync_overdue(db: AsyncSession, tenant_id: UUID) -> int:
+async def sync_overdue(db: AsyncSession, tenant_ids: list[UUID]) -> int:
     """Marca como OVERDUE todos os pagamentos PENDING com due_date < hoje."""
     today = date.today()
     result = await db.execute(
         select(Payment).where(
-            Payment.tenant_id == tenant_id,
+            _tenant_filter(tenant_ids),
             Payment.status == PaymentStatus.PENDING,
             Payment.due_date < today,
         )

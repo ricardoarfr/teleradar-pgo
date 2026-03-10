@@ -8,6 +8,7 @@ from app.modules.projects.models import ProjectStatus
 
 
 class ProjectCreate(BaseModel):
+    tenant_id: UUID
     name: str = Field(..., min_length=2, max_length=255)
     description: Optional[str] = None
     responsible_id: Optional[UUID] = None

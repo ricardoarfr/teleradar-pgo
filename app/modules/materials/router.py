@@ -1,12 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User, UserRole
 from app.database.connection import get_db
 from app.modules.materials import schemas, service
 from app.rbac.dependencies import require_roles
+from app.rbac.tenant import get_user_tenant_ids
 from app.utils.responses import success
 
 router = APIRouter()
@@ -21,7 +22,13 @@ async def create_material(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    material = await service.create_material(db, current_user.tenant_id, data)
+    tenant_ids = get_user_tenant_ids(current_user)
+    if tenant_ids and data.tenant_id not in tenant_ids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado a esta empresa.",
+        )
+    material = await service.create_material(db, data.tenant_id, data)
     return success("Material criado.", schemas.MaterialResponse.model_validate(material))
 
 
@@ -33,7 +40,8 @@ async def list_materials(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_staff_up),
 ):
-    materials, total = await service.list_materials(db, current_user.tenant_id, page, per_page, low_stock_only)
+    tenant_ids = get_user_tenant_ids(current_user)
+    materials, total = await service.list_materials(db, tenant_ids, page, per_page, low_stock_only)
     return success("Lista de materiais.", {
         "results": [schemas.MaterialResponse.model_validate(m) for m in materials],
         "total": total,
@@ -48,7 +56,8 @@ async def get_material(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_staff_up),
 ):
-    material = await service.get_material(db, current_user.tenant_id, material_id)
+    tenant_ids = get_user_tenant_ids(current_user)
+    material = await service.get_material(db, tenant_ids, material_id)
     return success("Dados do material.", schemas.MaterialResponse.model_validate(material))
 
 
@@ -59,7 +68,8 @@ async def update_material(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    material = await service.update_material(db, current_user.tenant_id, material_id, data)
+    tenant_ids = get_user_tenant_ids(current_user)
+    material = await service.update_material(db, tenant_ids, material_id, data)
     return success("Material atualizado.", schemas.MaterialResponse.model_validate(material))
 
 
@@ -70,5 +80,6 @@ async def adjust_stock(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    material = await service.adjust_stock(db, current_user.tenant_id, material_id, data.quantity)
+    tenant_ids = get_user_tenant_ids(current_user)
+    material = await service.adjust_stock(db, tenant_ids, material_id, data.quantity)
     return success("Estoque ajustado.", schemas.MaterialResponse.model_validate(material))

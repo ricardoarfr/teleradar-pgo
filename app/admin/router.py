@@ -25,7 +25,7 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(_admin_or_master),
 ):
-    users, total = await service.list_users(db, role, user_status, page, per_page)
+    users, total = await service.list_users(db, admin, role, user_status, page, per_page)
     return success("Lista de usuários.", {
         "results": [schemas.UserDetail.model_validate(u) for u in users],
         "total": total,
@@ -36,7 +36,7 @@ async def list_users(
 
 @router.get("/users/pending")
 async def list_pending(db: AsyncSession = Depends(get_db), admin: User = Depends(_admin_or_master)):
-    users = await service.list_pending_users(db)
+    users = await service.list_pending_users(db, admin)
     return success("Usuários pendentes.", [schemas.UserDetail.model_validate(u) for u in users])
 
 

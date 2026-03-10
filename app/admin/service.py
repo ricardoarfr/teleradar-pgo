@@ -25,15 +25,23 @@ async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User:
     return user
 
 
-async def list_pending_users(db: AsyncSession) -> list[User]:
-    result = await db.execute(
-        select(User).where(User.status == UserStatus.PENDING, User.is_active == True).order_by(User.created_at)
-    )
+async def list_pending_users(db: AsyncSession, admin: User) -> list[User]:
+    query = select(User).where(User.status == UserStatus.PENDING, User.is_active == True)
+
+    if admin.role != UserRole.MASTER:
+        tenant_ids = [t.id for t in admin.tenants]
+        if tenant_ids:
+            query = query.where(User.tenant_id.in_(tenant_ids))
+        else:
+            return []
+
+    result = await db.execute(query.order_by(User.created_at))
     return result.scalars().all()
 
 
 async def list_users(
     db: AsyncSession,
+    admin: User,
     role: UserRole | None = None,
     user_status: UserStatus | None = None,
     page: int = 1,
@@ -41,6 +49,15 @@ async def list_users(
 ) -> tuple[list[User], int]:
     query = select(User).where(User.is_active == True)
     count_query = select(func.count()).select_from(User).where(User.is_active == True)
+
+    # MASTER vê todos; demais roles filtram pelas suas empresas
+    if admin.role != UserRole.MASTER:
+        tenant_ids = [t.id for t in admin.tenants]
+        if tenant_ids:
+            query = query.where(User.tenant_id.in_(tenant_ids))
+            count_query = count_query.where(User.tenant_id.in_(tenant_ids))
+        else:
+            return [], 0
 
     if role:
         query = query.where(User.role == role)

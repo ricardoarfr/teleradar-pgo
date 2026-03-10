@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class MaterialCreate(BaseModel):
+    tenant_id: UUID
     name: str = Field(..., min_length=2, max_length=255)
     description: Optional[str] = None
     unit: str = Field(..., min_length=1, max_length=50)
