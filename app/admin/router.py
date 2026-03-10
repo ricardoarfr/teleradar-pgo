@@ -110,3 +110,35 @@ async def change_tenant(
 ):
     user = await service.change_user_tenant(db, user_id, data.tenant_id, admin)
     return success("Empresa vinculada.", schemas.UserDetail.model_validate(user))
+
+
+@router.get("/users/{user_id}/tenants")
+async def list_user_tenants(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(_admin_or_master),
+):
+    tenants = await service.get_user_tenants(db, user_id)
+    return success("Empresas do usuário.", [{"id": str(t.id), "name": t.name} for t in tenants])
+
+
+@router.post("/users/{user_id}/tenants/{tenant_id}", status_code=200)
+async def add_user_to_tenant(
+    user_id: UUID,
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(_admin_or_master),
+):
+    await service.add_user_to_tenant(db, user_id, tenant_id, admin)
+    return success("Empresa adicionada ao usuário.")
+
+
+@router.delete("/users/{user_id}/tenants/{tenant_id}", status_code=200)
+async def remove_user_from_tenant(
+    user_id: UUID,
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(_admin_or_master),
+):
+    await service.remove_user_from_tenant(db, user_id, tenant_id, admin)
+    return success("Empresa removida do usuário.")

@@ -7,6 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -17,8 +19,15 @@ import {
 import { UserStatusBadge } from "@/components/users/user-status-badge";
 import { UserRoleBadge } from "@/components/users/user-role-badge";
 import { UserActions } from "@/components/users/user-actions";
-import { useUser, useChangeUserPassword, useChangeUserTenant } from "@/hooks/use-users";
+import {
+  useUser,
+  useChangeUserPassword,
+  useUserTenants,
+  useAddUserTenant,
+  useRemoveUserTenant,
+} from "@/hooks/use-users";
 import { useListTenants } from "@/hooks/use-tenants";
+import type { Tenant } from "@/types/tenant";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate } from "@/lib/utils";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
@@ -33,23 +42,24 @@ export default function UserDetailPage({ params }: PageProps) {
   const { data: user, isLoading, error } = useUser(id);
   const { user: currentUser } = useAuth();
   const { data: tenantsData } = useListTenants();
-  const tenants = tenantsData?.results ?? [];
+  const tenants: Tenant[] = tenantsData?.results ?? [];
+
+  const { data: userTenants = [], isLoading: loadingTenants } = useUserTenants(id);
 
   const changePassword = useChangeUserPassword();
-  const changeTenant = useChangeUserTenant();
+  const addTenant = useAddUserTenant();
+  const removeTenant = useRemoveUserTenant();
 
   const [newPassword, setNewPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [selectedTenant, setSelectedTenant] = useState<string | undefined>(undefined);
+  const [selectedTenantToAdd, setSelectedTenantToAdd] = useState<string>("");
 
   const isAdminOrMaster =
     currentUser?.role === "MASTER" || currentUser?.role === "ADMIN";
 
-  // Initialize tenant select once user is loaded
-  const tenantValue =
-    selectedTenant !== undefined
-      ? selectedTenant
-      : (user?.tenant_id ?? "NONE");
+  // Tenants not yet linked to this user
+  const linkedIds = new Set(userTenants.map((t) => t.id));
+  const availableToAdd = tenants.filter((t) => !linkedIds.has(t.id));
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,16 +77,29 @@ export default function UserDetailPage({ params }: PageProps) {
     }
   };
 
-  const handleTenantSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const tenantId = tenantValue === "NONE" ? null : tenantValue;
+  const handleAddTenant = async () => {
+    if (!selectedTenantToAdd) return;
     try {
-      await changeTenant.mutateAsync({ userId: id, data: { tenant_id: tenantId } });
-      toast({ title: "Empresa vinculada!", description: "O vínculo foi atualizado com sucesso." });
+      await addTenant.mutateAsync({ userId: id, tenantId: selectedTenantToAdd });
+      setSelectedTenantToAdd("");
+      toast({ title: "Empresa adicionada!", description: "Vínculo criado com sucesso." });
     } catch (err: any) {
       toast({
         title: "Erro",
-        description: err?.response?.data?.detail ?? "Erro ao vincular empresa.",
+        description: err?.response?.data?.detail ?? "Erro ao adicionar empresa.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveTenant = async (tenantId: string) => {
+    try {
+      await removeTenant.mutateAsync({ userId: id, tenantId });
+      toast({ title: "Empresa removida.", description: "Vínculo removido com sucesso." });
+    } catch (err: any) {
+      toast({
+        title: "Erro",
+        description: err?.response?.data?.detail ?? "Erro ao remover empresa.",
         variant: "destructive",
       });
     }
@@ -161,51 +184,74 @@ export default function UserDetailPage({ params }: PageProps) {
               <p>{user.locked_until ? formatDate(user.locked_until) : "—"}</p>
             </div>
           </div>
-
-          <div className="text-sm">
-            <p className="text-xs text-muted-foreground mb-1">Empresa</p>
-            <p>
-              {user.tenant_id
-                ? (tenants.find((t) => t.id === user.tenant_id)?.name ?? user.tenant_id)
-                : "—"}
-            </p>
-          </div>
         </CardContent>
       </Card>
 
       {isAdminOrMaster && currentUser && (
         <>
-          {/* Vincular empresa */}
+          {/* Gerenciar empresas (N:N) */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Empresa</CardTitle>
-              <CardDescription>Vincule este usuário a uma empresa.</CardDescription>
+              <CardTitle className="text-base">Empresas</CardTitle>
+              <CardDescription>
+                Vincule este usuário a uma ou mais empresas.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleTenantSubmit} className="flex items-end gap-3">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="tenant">Empresa</Label>
-                  <Select
-                    value={tenantValue}
-                    onValueChange={(v) => setSelectedTenant(v)}
-                  >
-                    <SelectTrigger id="tenant">
-                      <SelectValue placeholder="Selecione uma empresa..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NONE">Nenhuma</SelectItem>
-                      {tenants.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            <CardContent className="space-y-4">
+              {/* Lista de empresas vinculadas */}
+              {loadingTenants ? (
+                <p className="text-sm text-muted-foreground">Carregando...</p>
+              ) : userTenants.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {userTenants.map((t) => (
+                    <Badge key={t.id} variant="secondary" className="flex items-center gap-1 pr-1 text-sm">
+                      {t.name}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTenant(t.id)}
+                        disabled={removeTenant.isPending}
+                        className="ml-1 hover:text-destructive disabled:opacity-50"
+                        title="Remover vínculo"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
                 </div>
-                <Button type="submit" disabled={changeTenant.isPending}>
-                  {changeTenant.isPending ? "Salvando..." : "Salvar"}
-                </Button>
-              </form>
+              )}
+
+              {/* Adicionar empresa */}
+              {availableToAdd.length > 0 && (
+                <div className="flex items-end gap-3 pt-2 border-t">
+                  <div className="flex-1 space-y-2">
+                    <Label>Adicionar empresa</Label>
+                    <Select
+                      value={selectedTenantToAdd}
+                      onValueChange={setSelectedTenantToAdd}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma empresa..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableToAdd.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleAddTenant}
+                    disabled={!selectedTenantToAdd || addTenant.isPending}
+                  >
+                    {addTenant.isPending ? "Adicionando..." : "Adicionar"}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -31,7 +31,7 @@ class ContractCreate(BaseModel):
     estado: Optional[str] = Field(None, max_length=2)
     cidade: Optional[str] = Field(None, max_length=100)
     servico_ids: list[UUID] = Field(..., min_length=1)
-    start_date: Optional[date] = None
+    start_date: date
     end_date: Optional[date] = None
     notes: Optional[str] = None
 

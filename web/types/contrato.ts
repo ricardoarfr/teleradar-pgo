@@ -33,11 +33,12 @@ export interface Contrato {
 }
 
 export interface ContratoCreate {
+  tenant_id: string;
   client_id?: string;
   estado?: string;
   cidade?: string;
   servico_ids: string[];
-  start_date?: string;
+  start_date: string;
   end_date?: string;
   notes?: string;
 }
