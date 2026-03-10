@@ -33,7 +33,12 @@ async def list_pending_users(db: AsyncSession, admin: User) -> list[User]:
     if admin.role != UserRole.MASTER:
         tenant_ids = [t.id for t in admin.tenants]
         if tenant_ids:
-            query = query.where(User.tenant_id.in_(tenant_ids))
+            # Filtrar pela tabela N:N (user_tenants) para capturar todos os vínculos,
+            # não apenas o tenant_id primário do usuário.
+            member_ids = select(user_tenants_table.c.user_id).where(
+                user_tenants_table.c.tenant_id.in_(tenant_ids)
+            )
+            query = query.where(User.id.in_(member_ids))
         else:
             return []
 
@@ -52,12 +57,16 @@ async def list_users(
     query = select(User).where(User.is_active == True)
     count_query = select(func.count()).select_from(User).where(User.is_active == True)
 
-    # MASTER vê todos; demais roles filtram pelas suas empresas
+    # MASTER vê todos; demais roles filtram pela tabela N:N (user_tenants)
+    # para garantir que usuários com tenant secundário também sejam visíveis.
     if admin.role != UserRole.MASTER:
         tenant_ids = [t.id for t in admin.tenants]
         if tenant_ids:
-            query = query.where(User.tenant_id.in_(tenant_ids))
-            count_query = count_query.where(User.tenant_id.in_(tenant_ids))
+            member_ids = select(user_tenants_table.c.user_id).where(
+                user_tenants_table.c.tenant_id.in_(tenant_ids)
+            )
+            query = query.where(User.id.in_(member_ids))
+            count_query = count_query.where(User.id.in_(member_ids))
         else:
             return [], 0
 

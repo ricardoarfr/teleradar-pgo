@@ -13,6 +13,7 @@ import { getMeAction } from "@/actions/auth-actions";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 import type { ContratoCreate } from "@/types/contrato";
+import type { TenantInfo } from "@/types/auth";
 
 export default function NovoContratoPage() {
   const router = useRouter();
@@ -25,17 +26,39 @@ export default function NovoContratoPage() {
     queryFn: getMeAction,
   });
 
-  const isMasterWithoutTenant = me?.role === "MASTER" && !me?.tenant_id;
+  const isMaster = me?.role === "MASTER";
+  const userTenants: TenantInfo[] = me?.tenants ?? [];
+  const hasMultipleTenants = userTenants.length > 1;
 
-  const { data: tenantsData } = useListTenants();
-  const tenants = tenantsData?.results ?? [];
+  // MASTER: load all tenants from API
+  // Non-MASTER with multiple tenants: use user's own tenants from /auth/me
+  const { data: allTenantsData } = useListTenants({ per_page: 200 });
 
-  const tenantId = me?.tenant_id ?? selectedTenantId;
+  // Determine available tenant options for the selector
+  const selectorTenants: TenantInfo[] = isMaster
+    ? (allTenantsData?.results ?? []).map((t) => ({ id: t.id, name: t.name }))
+    : userTenants;
+
+  // Show tenant selector when:
+  // - MASTER (can pick any tenant), OR
+  // - Non-MASTER user with more than 1 linked company
+  const showTenantSelector = isMaster || hasMultipleTenants;
+
+  // Effective tenant_id:
+  // - If selector shown: use selectedTenantId
+  // - If single tenant: auto-use the only tenant
+  // - If master with no selection: nothing yet
+  const effectiveTenantId =
+    showTenantSelector
+      ? selectedTenantId
+      : userTenants.length === 1
+      ? userTenants[0].id
+      : "";
 
   const handleSubmit = async (data: ContratoCreate) => {
     setApiError(null);
     try {
-      await createContrato.mutateAsync({ ...data, tenant_id: tenantId });
+      await createContrato.mutateAsync({ ...data, tenant_id: effectiveTenantId });
       toast({ title: "Contrato cadastrado!", description: "O contrato foi criado com sucesso." });
       router.push("/contratos");
     } catch (err: any) {
@@ -60,6 +83,25 @@ export default function NovoContratoPage() {
     );
   }
 
+  // Non-MASTER user with no tenant linked
+  if (!isMaster && userTenants.length === 0) {
+    return (
+      <div className="max-w-3xl">
+        <div className="mb-6">
+          <Link href="/contratos" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+            Voltar para contratos
+          </Link>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Seu usuário não está vinculado a nenhuma empresa. Contate o administrador.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl">
       <div className="mb-6">
@@ -78,12 +120,19 @@ export default function NovoContratoPage() {
           <CardDescription>Preencha os dados para cadastrar um novo contrato.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {isMasterWithoutTenant && (
+          {/* Tenant selector: visible for MASTER (all companies) or multi-tenant users (own companies) */}
+          {showTenantSelector && (
             <div className="space-y-2 pb-6 border-b">
               <Label htmlFor="tenant-select">Empresa *</Label>
-              <p className="text-xs text-muted-foreground">
-                Como MASTER, escolha a empresa para a qual o contrato será criado.
-              </p>
+              {isMaster ? (
+                <p className="text-xs text-muted-foreground">
+                  Como MASTER, escolha a empresa para a qual o contrato será criado.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Você está vinculado a múltiplas empresas. Selecione para qual empresa este contrato pertence.
+                </p>
+              )}
               <select
                 id="tenant-select"
                 value={selectedTenantId}
@@ -91,7 +140,7 @@ export default function NovoContratoPage() {
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">Selecione uma empresa...</option>
-                {tenants.map((t) => (
+                {selectorTenants.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>
@@ -100,7 +149,8 @@ export default function NovoContratoPage() {
             </div>
           )}
 
-          {isMasterWithoutTenant && !selectedTenantId ? (
+          {/* Block form until tenant is selected (when selector is required) */}
+          {showTenantSelector && !selectedTenantId ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
               Selecione uma empresa acima para continuar.
             </p>
