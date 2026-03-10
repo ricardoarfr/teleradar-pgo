@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: teleradar_dev_db
+    environment:
+      POSTGRES_USER: teleradar
+      POSTGRES_PASSWORD: teleradar_dev
+      POSTGRES_DB: teleradar_pgo
+    ports:
+      - "5433:5432"
+    volumes:
+      - teleradar_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U teleradar -d teleradar_pgo"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  teleradar_dev_data:
