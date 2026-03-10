@@ -3,11 +3,17 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import select, func, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.materials.models import Material
 from app.modules.materials.schemas import MaterialCreate, MaterialUpdate
+
+
+def _tenant_filter(tenant_ids: list[UUID]):
+    if tenant_ids:
+        return Material.tenant_id.in_(tenant_ids)
+    return true()
 
 
 async def create_material(db: AsyncSession, tenant_id: UUID, data: MaterialCreate) -> Material:
@@ -27,13 +33,13 @@ async def create_material(db: AsyncSession, tenant_id: UUID, data: MaterialCreat
 
 async def list_materials(
     db: AsyncSession,
-    tenant_id: UUID,
+    tenant_ids: list[UUID],
     page: int = 1,
     per_page: int = 20,
     low_stock_only: bool = False,
 ) -> tuple[list[Material], int]:
-    query = select(Material).where(Material.tenant_id == tenant_id)
-    count_query = select(func.count()).select_from(Material).where(Material.tenant_id == tenant_id)
+    query = select(Material).where(_tenant_filter(tenant_ids))
+    count_query = select(func.count()).select_from(Material).where(_tenant_filter(tenant_ids))
 
     if low_stock_only:
         query = query.where(Material.quantity <= Material.min_quantity)
@@ -48,9 +54,9 @@ async def list_materials(
     return materials, total
 
 
-async def get_material(db: AsyncSession, tenant_id: UUID, material_id: UUID) -> Material:
+async def get_material(db: AsyncSession, tenant_ids: list[UUID], material_id: UUID) -> Material:
     result = await db.execute(
-        select(Material).where(Material.id == material_id, Material.tenant_id == tenant_id)
+        select(Material).where(Material.id == material_id, _tenant_filter(tenant_ids))
     )
     material = result.scalar_one_or_none()
     if not material:
@@ -59,9 +65,9 @@ async def get_material(db: AsyncSession, tenant_id: UUID, material_id: UUID) -> 
 
 
 async def update_material(
-    db: AsyncSession, tenant_id: UUID, material_id: UUID, data: MaterialUpdate
+    db: AsyncSession, tenant_ids: list[UUID], material_id: UUID, data: MaterialUpdate
 ) -> Material:
-    material = await get_material(db, tenant_id, material_id)
+    material = await get_material(db, tenant_ids, material_id)
 
     if data.name is not None:
         material.name = data.name
@@ -79,9 +85,9 @@ async def update_material(
 
 
 async def adjust_stock(
-    db: AsyncSession, tenant_id: UUID, material_id: UUID, delta: Decimal
+    db: AsyncSession, tenant_ids: list[UUID], material_id: UUID, delta: Decimal
 ) -> Material:
-    material = await get_material(db, tenant_id, material_id)
+    material = await get_material(db, tenant_ids, material_id)
     new_qty = material.quantity + delta
     if new_qty < 0:
         raise HTTPException(status_code=422, detail="Estoque não pode ficar negativo")

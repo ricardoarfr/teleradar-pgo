@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User, UserRole
@@ -9,6 +9,7 @@ from app.database.connection import get_db
 from app.modules.payments import schemas, service
 from app.modules.payments.models import PaymentStatus
 from app.rbac.dependencies import require_roles
+from app.rbac.tenant import get_user_tenant_ids
 from app.utils.responses import success
 
 router = APIRouter()
@@ -23,7 +24,13 @@ async def create_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    payment = await service.create_payment(db, current_user.tenant_id, data)
+    tenant_ids = get_user_tenant_ids(current_user)
+    if tenant_ids and data.tenant_id not in tenant_ids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado a esta empresa.",
+        )
+    payment = await service.create_payment(db, data.tenant_id, data)
     return success("Pagamento criado.", schemas.PaymentResponse.model_validate(payment))
 
 
@@ -36,8 +43,9 @@ async def list_payments(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_staff_up),
 ):
+    tenant_ids = get_user_tenant_ids(current_user)
     payments, total = await service.list_payments(
-        db, current_user.tenant_id, page, per_page, status, contract_id
+        db, tenant_ids, page, per_page, status, contract_id
     )
     return success("Lista de pagamentos.", {
         "results": [schemas.PaymentResponse.model_validate(p) for p in payments],
@@ -53,7 +61,8 @@ async def get_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_staff_up),
 ):
-    payment = await service.get_payment(db, current_user.tenant_id, payment_id)
+    tenant_ids = get_user_tenant_ids(current_user)
+    payment = await service.get_payment(db, tenant_ids, payment_id)
     return success("Dados do pagamento.", schemas.PaymentResponse.model_validate(payment))
 
 
@@ -64,7 +73,8 @@ async def update_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    payment = await service.update_payment(db, current_user.tenant_id, payment_id, data)
+    tenant_ids = get_user_tenant_ids(current_user)
+    payment = await service.update_payment(db, tenant_ids, payment_id, data)
     return success("Pagamento atualizado.", schemas.PaymentResponse.model_validate(payment))
 
 
@@ -75,7 +85,8 @@ async def mark_paid(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    payment = await service.mark_paid(db, current_user.tenant_id, payment_id, data)
+    tenant_ids = get_user_tenant_ids(current_user)
+    payment = await service.mark_paid(db, tenant_ids, payment_id, data)
     return success("Pagamento quitado.", schemas.PaymentResponse.model_validate(payment))
 
 
@@ -85,7 +96,8 @@ async def cancel_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    payment = await service.cancel_payment(db, current_user.tenant_id, payment_id)
+    tenant_ids = get_user_tenant_ids(current_user)
+    payment = await service.cancel_payment(db, tenant_ids, payment_id)
     return success("Pagamento cancelado.", schemas.PaymentResponse.model_validate(payment))
 
 
@@ -94,5 +106,6 @@ async def sync_overdue(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    count = await service.sync_overdue(db, current_user.tenant_id)
+    tenant_ids = get_user_tenant_ids(current_user)
+    count = await service.sync_overdue(db, tenant_ids)
     return success(f"{count} pagamento(s) marcado(s) como vencido(s).", {"updated": count})

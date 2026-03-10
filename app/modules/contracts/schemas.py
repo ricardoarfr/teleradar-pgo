@@ -26,6 +26,7 @@ class LogEntry(BaseModel):
 
 
 class ContractCreate(BaseModel):
+    tenant_id: UUID
     client_id: Optional[UUID] = None
     estado: Optional[str] = Field(None, max_length=2)
     cidade: Optional[str] = Field(None, max_length=100)

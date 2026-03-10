@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import select, func, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -11,11 +11,21 @@ from app.modules.contracts.schemas import ContractCreate, ContractUpdate
 from app.modules.catalogo.lpu.models import Servico
 
 
-async def _get_contract_full(db: AsyncSession, tenant_id: UUID, contract_id: UUID) -> Contract:
+def _tenant_filter(model, tenant_ids: list[UUID]):
+    """Retorna a cláusula WHERE de isolamento por tenant.
+
+    tenant_ids vazio → MASTER sem restrição → sem filtro (true()).
+    """
+    if tenant_ids:
+        return model.tenant_id.in_(tenant_ids)
+    return true()
+
+
+async def _get_contract_full(db: AsyncSession, tenant_ids: list[UUID], contract_id: UUID) -> Contract:
     """Fetch contract with all relationships loaded (avoids MissingGreenlet)."""
     result = await db.execute(
         select(Contract)
-        .where(Contract.id == contract_id, Contract.tenant_id == tenant_id)
+        .where(Contract.id == contract_id, _tenant_filter(Contract, tenant_ids))
         .options(
             selectinload(Contract.servicos).selectinload(ContractServico.servico),
             selectinload(Contract.logs),
@@ -77,25 +87,25 @@ async def create_contract(
     ))
 
     await db.commit()
-    return await _get_contract_full(db, tenant_id, contract.id)
+    return await _get_contract_full(db, [tenant_id], contract.id)
 
 
 async def list_contracts(
     db: AsyncSession,
-    tenant_id: UUID,
+    tenant_ids: list[UUID],
     page: int = 1,
     per_page: int = 20,
     status: ContractStatus | None = None,
 ) -> tuple[list[Contract], int]:
     query = (
         select(Contract)
-        .where(Contract.tenant_id == tenant_id)
+        .where(_tenant_filter(Contract, tenant_ids))
         .options(
             selectinload(Contract.servicos).selectinload(ContractServico.servico),
             selectinload(Contract.logs),
         )
     )
-    count_query = select(func.count()).select_from(Contract).where(Contract.tenant_id == tenant_id)
+    count_query = select(func.count()).select_from(Contract).where(_tenant_filter(Contract, tenant_ids))
 
     if status:
         query = query.where(Contract.status == status)
@@ -110,14 +120,14 @@ async def list_contracts(
     return contracts, total
 
 
-async def get_contract(db: AsyncSession, tenant_id: UUID, contract_id: UUID) -> Contract:
-    return await _get_contract_full(db, tenant_id, contract_id)
+async def get_contract(db: AsyncSession, tenant_ids: list[UUID], contract_id: UUID) -> Contract:
+    return await _get_contract_full(db, tenant_ids, contract_id)
 
 
 async def update_contract(
-    db: AsyncSession, tenant_id: UUID, contract_id: UUID, user_id: UUID, data: ContractUpdate
+    db: AsyncSession, tenant_ids: list[UUID], contract_id: UUID, user_id: UUID, data: ContractUpdate
 ) -> Contract:
-    contract = await _get_contract_full(db, tenant_id, contract_id)
+    contract = await _get_contract_full(db, tenant_ids, contract_id)
 
     changes: list[str] = []
 
@@ -163,14 +173,14 @@ async def update_contract(
         ))
 
     await db.commit()
-    return await _get_contract_full(db, tenant_id, contract_id)
+    return await _get_contract_full(db, tenant_ids, contract_id)
 
 
 async def delete_contract(
-    db: AsyncSession, tenant_id: UUID, contract_id: UUID, user_id: UUID
+    db: AsyncSession, tenant_ids: list[UUID], contract_id: UUID, user_id: UUID
 ) -> None:
-    contract = await _get_contract_full(db, tenant_id, contract_id)
-    # Log before deletion (cascade will remove it anyway, but useful if we ever change to soft-delete)
+    contract = await _get_contract_full(db, tenant_ids, contract_id)
+    # Log before deletion
     db.add(ContractLog(
         contract_id=contract.id,
         user_id=user_id,

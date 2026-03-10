@@ -2,11 +2,19 @@ import uuid
 import enum
 from datetime import datetime
 
-from sqlalchemy import Column, String, Boolean, Integer, DateTime, Enum, ForeignKey, Text
+from sqlalchemy import Column, String, Boolean, Integer, DateTime, Enum, ForeignKey, Text, Table
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
+
+# Tabela de associação N:N entre usuários e empresas
+user_tenants = Table(
+    "user_tenants",
+    Base.metadata,
+    Column("user_id",   UUID(as_uuid=True), ForeignKey("users.id",   ondelete="CASCADE"), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class UserRole(str, enum.Enum):
@@ -47,6 +55,7 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     tenant = relationship("Tenant", back_populates="users")
+    tenants = relationship("Tenant", secondary="user_tenants", back_populates="member_users")
     tokens = relationship("Token", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
 

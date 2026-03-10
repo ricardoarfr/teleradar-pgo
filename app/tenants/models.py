@@ -24,3 +24,4 @@ class Tenant(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     users = relationship("User", back_populates="tenant")
+    member_users = relationship("User", secondary="user_tenants", back_populates="tenants")

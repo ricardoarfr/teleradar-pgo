@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User, UserRole
@@ -9,6 +9,7 @@ from app.database.connection import get_db
 from app.modules.contracts import schemas, service
 from app.modules.contracts.models import Contract, ContractStatus
 from app.rbac.dependencies import require_roles
+from app.rbac.tenant import get_user_tenant_ids
 from app.utils.responses import success
 
 router = APIRouter()
@@ -18,12 +19,7 @@ _manager_up = require_roles(UserRole.MANAGER, UserRole.ADMIN, UserRole.MASTER)
 
 
 def _to_response(contract: Contract) -> schemas.ContractResponse:
-    """Converts Contract ORM object to ContractResponse schema.
-
-    contract.servicos is a list of ContractServico (join table rows),
-    each with a .servico relationship to the actual Servico object.
-    We extract the Servico data to build ServicoInfo.
-    """
+    """Converts Contract ORM object to ContractResponse schema."""
     servicos = [
         schemas.ServicoInfo(
             id=cs.servico.id,
@@ -60,7 +56,13 @@ async def create_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    contract = await service.create_contract(db, current_user.tenant_id, current_user.id, data)
+    tenant_ids = get_user_tenant_ids(current_user)
+    if tenant_ids and data.tenant_id not in tenant_ids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado a esta empresa.",
+        )
+    contract = await service.create_contract(db, data.tenant_id, current_user.id, data)
     return success("Contrato criado.", _to_response(contract))
 
 
@@ -72,7 +74,8 @@ async def list_contracts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_staff_up),
 ):
-    contracts, total = await service.list_contracts(db, current_user.tenant_id, page, per_page, status)
+    tenant_ids = get_user_tenant_ids(current_user)
+    contracts, total = await service.list_contracts(db, tenant_ids, page, per_page, status)
     return success("Lista de contratos.", {
         "results": [_to_response(c) for c in contracts],
         "total": total,
@@ -87,7 +90,8 @@ async def get_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_staff_up),
 ):
-    contract = await service.get_contract(db, current_user.tenant_id, contract_id)
+    tenant_ids = get_user_tenant_ids(current_user)
+    contract = await service.get_contract(db, tenant_ids, contract_id)
     return success("Dados do contrato.", _to_response(contract))
 
 
@@ -98,9 +102,8 @@ async def update_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    contract = await service.update_contract(
-        db, current_user.tenant_id, contract_id, current_user.id, data
-    )
+    tenant_ids = get_user_tenant_ids(current_user)
+    contract = await service.update_contract(db, tenant_ids, contract_id, current_user.id, data)
     return success("Contrato atualizado.", _to_response(contract))
 
 
@@ -110,4 +113,5 @@ async def delete_contract(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_manager_up),
 ):
-    await service.delete_contract(db, current_user.tenant_id, contract_id, current_user.id)
+    tenant_ids = get_user_tenant_ids(current_user)
+    await service.delete_contract(db, tenant_ids, contract_id, current_user.id)

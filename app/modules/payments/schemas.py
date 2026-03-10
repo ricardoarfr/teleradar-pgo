@@ -9,6 +9,7 @@ from app.modules.payments.models import PaymentStatus
 
 
 class PaymentCreate(BaseModel):
+    tenant_id: UUID
     contract_id: UUID
     amount: Decimal = Field(..., gt=0)
     due_date: date
