@@ -1,9 +1,16 @@
 from pydantic import BaseModel, EmailStr, Field
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from app.auth.models import UserRole, UserStatus
+
+
+class TenantInfo(BaseModel):
+    id: UUID
+    name: str
+
+    model_config = {"from_attributes": True}
 
 
 class UserRegister(BaseModel):
@@ -55,6 +62,7 @@ class UserResponse(BaseModel):
     role: UserRole
     status: UserStatus
     tenant_id: Optional[UUID]
+    tenants: List[TenantInfo] = []
     is_active: bool
     created_at: datetime
     updated_at: datetime

@@ -16,6 +16,11 @@ export interface TokenPayload {
   iat: number;
 }
 
+export interface TenantInfo {
+  id: string;
+  name: string;
+}
+
 export interface AuthUser {
   id: string;
   name: string;
@@ -23,6 +28,7 @@ export interface AuthUser {
   role: UserRole;
   status: UserStatus;
   tenant_id: string | null;
+  tenants: TenantInfo[];
   is_active: boolean;
   created_at: string;
   updated_at: string;
